@@ -1,0 +1,10 @@
+{
+  "description": "Streamline communication and document management with features like email integration, file uploads, and customizable reporting for efficient workflows.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
