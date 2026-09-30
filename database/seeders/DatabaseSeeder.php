@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
             ['email' => 'admin@psccrm.test'],
             [
                 'name' => 'PSC Admin',
+                'account_type' => User::ACCOUNT_TYPE_ADMIN,
+                'offices' => ['MEL', 'SYD', 'BNE', 'PER', 'ADL'],
                 'password' => Hash::make('password'),
             ]
         );

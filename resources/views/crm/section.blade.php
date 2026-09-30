@@ -4,7 +4,7 @@
     <header class="mb-7 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
             <h1 class="text-[26px] font-bold leading-tight text-[#101820]">{{ $heading }}</h1>
-            <p class="mt-2 text-sm text-slate-600">Progress Study CRM workspace.</p>
+            <p class="mt-2 text-sm text-slate-600">{{ $context ?? 'Progress Study CRM workspace.' }}</p>
         </div>
         <a href="{{ route('home') }}" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-[#1f7890] hover:text-[#1f7890]">Back to Home</a>
     </header>
