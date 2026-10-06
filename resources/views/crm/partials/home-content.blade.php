@@ -34,7 +34,7 @@
     </div>
     <div class="flex flex-wrap gap-2">
         <a href="{{ route('clients') }}" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-[#1f7890] hover:text-[#1f7890]">Search Client</a>
-        <a href="{{ route('clients') }}" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-[#1f7890] hover:text-[#1f7890]">Create Client</a>
+        <a href="{{ route('clients.create') }}" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-[#1f7890] hover:text-[#1f7890]">Create Client</a>
         <a href="{{ route('leads') }}" class="rounded-md bg-[#1f7890] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#17657a]">Create Lead</a>
     </div>
 </header>

@@ -4,8 +4,16 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientsController;
 use App\Http\Controllers\MyOfficesController;
+use App\Http\Controllers\WebsiteLeadFormController;
 
 $registerRoutes = function () {
+    Route::get('/contact', [WebsiteLeadFormController::class, 'contact'])->name('website.contact');
+    Route::post('/contact', [WebsiteLeadFormController::class, 'submitContact'])->name('website.contact.submit');
+    Route::get('/book-a-free-consultation', [WebsiteLeadFormController::class, 'consultation'])->name('website.consultation');
+    Route::post('/book-a-free-consultation', [WebsiteLeadFormController::class, 'submitConsultation'])->name('website.consultation.submit');
+    Route::get('/website/captcha/image', [WebsiteLeadFormController::class, 'captchaImage'])->name('website.captcha.image');
+    Route::get('/website/captcha/refresh', [WebsiteLeadFormController::class, 'refreshCaptcha'])->name('website.captcha.refresh');
+
     Route::middleware('guest')->group(function () {
         Route::get('/login', [AuthController::class, 'create'])->name('login');
         Route::post('/login', [AuthController::class, 'store'])->name('login.store');
@@ -38,8 +46,12 @@ $registerRoutes = function () {
         Route::get('/clients', [ClientsController::class, 'index'])->name('clients');
         Route::get('/clients/export', [ClientsController::class, 'export'])->name('clients.export');
         Route::get('/clients/create', [ClientsController::class, 'create'])->name('clients.create');
+        Route::post('/clients', [ClientsController::class, 'store'])->name('clients.store');
         Route::get('/clients/search', [ClientsController::class, 'search'])->name('clients.search');
         Route::get('/clients/{clientId}', [ClientsController::class, 'show'])->name('clients.show');
+        Route::post('/clients/{clientId}/edit', [ClientsController::class, 'edit'])->name('clients.edit');
+        Route::patch('/clients/{clientId}', [ClientsController::class, 'update'])->name('clients.update');
+        Route::post('/clients/{clientId}/discard', [ClientsController::class, 'discard'])->name('clients.discard');
 
         Route::prefix('my-offices')->name('my-offices.')->group(function () {
             Route::get('/', [MyOfficesController::class, 'index'])->name('index');

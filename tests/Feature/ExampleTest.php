@@ -2,8 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Client;
+use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
@@ -143,7 +147,10 @@ class ExampleTest extends TestCase
         $this->actingAs($user)
             ->get('/clients/create')
             ->assertStatus(200)
-            ->assertSee('Add Client');
+            ->assertSee('New Client')
+            ->assertSee('Client ID')
+            ->assertSee('Admin Office')
+            ->assertSee('Active');
 
         $this->actingAs($user)
             ->get('/clients/search')
@@ -165,5 +172,550 @@ class ExampleTest extends TestCase
             ->get('/clients/1001')
             ->assertStatus(200)
             ->assertSee('Client 1001');
+    }
+
+    public function test_users_can_manually_create_a_client(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Jessica Morgan',
+            'offices' => ['SYD'],
+        ]);
+
+        $this->actingAs($user)
+            ->get('/clients/create')
+            ->assertStatus(200)
+            ->assertSee('value="Sydney" selected', false)
+            ->assertSee('value="Active" selected', false);
+
+        $response = $this->actingAs($user)->post('/clients', [
+            'first_name' => 'Kim',
+            'middle_name' => 'Yves',
+            'surname' => 'Ramirez',
+            'dob' => '1997-06-10',
+            'mobile' => '+61 412 555 111',
+            'email' => 'kim@example.test',
+            'nationality' => 'Philippine',
+            'current_location' => 'Sydney',
+            'street' => '10 George Street',
+            'suburb' => 'Sydney',
+            'state' => 'NSW',
+            'postcode' => '2000',
+            'admin_office' => 'Sydney',
+            'client_status' => 'Active',
+            'notes' => 'Initial manual client note',
+        ]);
+
+        $response
+            ->assertRedirect('/clients/1018')
+            ->assertSessionHas('success', 'Success! Client ID 1018 created for Kim Yves Ramirez');
+
+        $this->assertDatabaseHas('clients', [
+            'client_id' => 1018,
+            'created_by_user_id' => $user->id,
+            'first_name' => 'Kim',
+            'middle_name' => 'Yves',
+            'surname' => 'Ramirez',
+            'dob' => '1997-06-10',
+            'email' => 'kim@example.test',
+            'client_status' => 'Active',
+            'admin_office' => 'Sydney',
+        ]);
+
+        $createdNotes = json_decode((string) Client::where('client_id', 1018)->value('notes'), true);
+
+        $this->assertSame('Initial manual client note', $createdNotes[0]['body'] ?? null);
+        $this->assertSame('Jessica Morgan', $createdNotes[0]['author'] ?? null);
+        $this->assertNotEmpty($createdNotes[0]['datetime'] ?? null);
+
+        $this->actingAs($user)
+            ->get('/clients/1018')
+            ->assertStatus(200)
+            ->assertSee('Kim Yves Ramirez')
+            ->assertSee('kim@example.test')
+            ->assertSee('Initial manual client note')
+            ->assertSee('Success! Client ID 1018 created for Kim Yves Ramirez');
+
+        $this->actingAs($user)
+            ->get('/clients?per_page=20')
+            ->assertStatus(200)
+            ->assertSee('"client_id":1018', false)
+            ->assertSee('"first_name":"Kim"', false);
+    }
+
+    public function test_manual_client_creation_requires_mandatory_fields(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->from('/clients/create')
+            ->post('/clients', [
+                'first_name' => '',
+                'mobile' => '',
+                'email' => '',
+                'nationality' => '',
+                'current_location' => '',
+                'admin_office' => '',
+                'client_status' => '',
+            ])
+            ->assertRedirect('/clients/create')
+            ->assertSessionHasErrors([
+                'first_name',
+                'mobile',
+                'email',
+                'nationality',
+                'current_location',
+                'admin_office',
+                'client_status',
+            ]);
+
+        $this->actingAs($user)
+            ->get('/clients/create')
+            ->assertStatus(200)
+            ->assertSee('The client was not created. Complete the missing mandatory data.');
+    }
+
+    public function test_manual_client_creation_warns_about_duplicate_full_name_and_dob(): void
+    {
+        $user = User::factory()->create(['name' => 'Jessica Morgan']);
+
+        $payload = [
+            'first_name' => 'Ana',
+            'middle_name' => 'Maria',
+            'surname' => 'Santos',
+            'dob' => '2000-04-12',
+            'mobile' => '+61 412 555 222',
+            'email' => 'ana.duplicate@example.test',
+            'nationality' => 'Philippine',
+            'current_location' => 'Melbourne',
+            'admin_office' => 'Melbourne',
+            'client_status' => 'Active',
+        ];
+
+        $this->actingAs($user)
+            ->from('/clients/create')
+            ->post('/clients', $payload)
+            ->assertRedirect('/clients/create')
+            ->assertSessionHas('duplicateClient');
+
+        $this->actingAs($user)
+            ->get('/clients/create')
+            ->assertStatus(200)
+            ->assertSee('Possible duplicate client found.')
+            ->assertSee('Ana Maria Santos already exists as CL-1001');
+
+        $this->actingAs($user)
+            ->post('/clients', $payload + ['proceed_duplicate' => '1'])
+            ->assertRedirect('/clients/1018')
+            ->assertSessionHas('success', 'Success! Client ID 1018 created for Ana Maria Santos');
+    }
+
+    public function test_client_record_can_be_edited_with_validation_and_success_feedback(): void
+    {
+        $user = User::factory()->create(['name' => 'Jessica Morgan']);
+
+        $this->actingAs($user)
+            ->get('/clients/1001')
+            ->assertStatus(200)
+            ->assertSee('Edit')
+            ->assertDontSee('Save changes');
+
+        $this->actingAs($user)
+            ->post('/clients/1001/edit')
+            ->assertRedirect('/clients/1001?editing=1');
+
+        $this->actingAs($user)
+            ->get('/clients/1001?editing=1')
+            ->assertStatus(200)
+            ->assertSee('Save changes')
+            ->assertSee('Discard');
+
+        $this->actingAs($user)
+            ->from('/clients/1001?editing=1')
+            ->patch('/clients/1001', [
+                'first_name' => '',
+                'dob' => now()->addDay()->toDateString(),
+                'mobile' => '0412345678',
+                'email' => 'invalid-email',
+                'nationality' => 'Atlantis',
+                'current_location' => '',
+                'postcode' => '12345',
+                'client_status' => '',
+            ])
+            ->assertRedirect('/clients/1001?editing=1')
+            ->assertSessionHasErrors([
+                'first_name',
+                'dob',
+                'mobile',
+                'email',
+                'nationality',
+                'current_location',
+                'postcode',
+                'client_status',
+            ]);
+
+        $this->actingAs($user)
+            ->patch('/clients/1001', [
+                'first_name' => 'Ana',
+                'middle_name' => 'Maria',
+                'surname' => '',
+                'dob' => '1998-02-03',
+                'mobile' => '+61 412 555 999',
+                'email' => 'ana.updated@example.test',
+                'nationality' => 'Philippine',
+                'current_location' => 'Sydney',
+                'street' => '5 King Street',
+                'suburb' => 'Sydney',
+                'state' => 'NSW',
+                'postcode' => '2000',
+                'admin_office' => 'Sydney',
+                'client_status' => 'Active',
+                'current_visa' => 'Student visa',
+                'visa_expiry' => '2027-03-04',
+                'notes' => 'Updated record note',
+            ])
+            ->assertRedirect('/clients/1001')
+            ->assertSessionHas('success', 'Success! Client changes were saved.');
+
+        $this->assertDatabaseHas('clients', [
+            'client_id' => 1001,
+            'first_name' => 'Ana',
+            'surname' => '',
+            'dob' => '1998-02-03',
+            'mobile' => '+61 412 555 999',
+            'email' => 'ana.updated@example.test',
+            'current_location' => 'Sydney',
+            'postcode' => '2000',
+        ]);
+
+        $this->actingAs($user)
+            ->get('/clients/1001')
+            ->assertStatus(200)
+            ->assertSee('Success! Client changes were saved.')
+            ->assertSee('ana.updated@example.test')
+            ->assertSee('Updated record note')
+            ->assertSee('Edit')
+            ->assertDontSee('Save changes');
+    }
+
+    public function test_client_notes_are_saved_as_individual_sticky_notes(): void
+    {
+        $user = User::factory()->create(['name' => 'Jessica Morgan']);
+        $payload = [
+            'first_name' => 'Ana',
+            'middle_name' => 'Maria',
+            'surname' => 'Santos',
+            'dob' => '1998-02-03',
+            'mobile' => '+61 412 555 999',
+            'email' => 'ana.notes@example.test',
+            'nationality' => 'Philippine',
+            'current_location' => 'Sydney',
+            'street' => '5 King Street',
+            'suburb' => 'Sydney',
+            'state' => 'NSW',
+            'postcode' => '2000',
+            'admin_office' => 'Sydney',
+            'client_status' => 'Active',
+            'current_visa' => 'Student visa',
+            'visa_expiry' => '2027-03-04',
+        ];
+
+        $this->actingAs($user)->post('/clients/1001/edit');
+
+        $this->actingAs($user)
+            ->patch('/clients/1001', $payload + [
+                'note_bodies' => ['First sticky note', '', 'Second sticky note'],
+            ])
+            ->assertRedirect('/clients/1001');
+
+        $savedNotes = json_decode((string) Client::where('client_id', 1001)->value('notes'), true);
+
+        $this->assertCount(2, $savedNotes);
+        $this->assertSame('First sticky note', $savedNotes[0]['body'] ?? null);
+        $this->assertSame('Second sticky note', $savedNotes[1]['body'] ?? null);
+        $this->assertSame('Jessica Morgan', $savedNotes[0]['author'] ?? null);
+        $this->assertNotEmpty($savedNotes[0]['datetime'] ?? null);
+
+        $this->actingAs($user)
+            ->get('/clients/1001')
+            ->assertStatus(200)
+            ->assertSee('client-note', false)
+            ->assertSee('First sticky note')
+            ->assertSee('Second sticky note')
+            ->assertSee('Added by Jessica Morgan');
+
+        $this->actingAs($user)->post('/clients/1001/edit');
+
+        $this->actingAs($user)
+            ->patch('/clients/1001', $payload + [
+                'note_bodies' => ['Second sticky note'],
+            ])
+            ->assertRedirect('/clients/1001');
+
+        $remainingNotes = json_decode((string) Client::where('client_id', 1001)->value('notes'), true);
+
+        $this->assertCount(1, $remainingNotes);
+        $this->assertSame('Second sticky note', $remainingNotes[0]['body'] ?? null);
+        $this->assertSame('Jessica Morgan', $remainingNotes[0]['author'] ?? null);
+        $this->assertNotEmpty($remainingNotes[0]['datetime'] ?? null);
+    }
+
+    public function test_client_record_edit_lock_blocks_other_users_until_released(): void
+    {
+        $userA = User::factory()->create(['name' => 'Jessica Morgan']);
+        $userB = User::factory()->create(['name' => 'Priya Raman']);
+
+        $this->actingAs($userA)
+            ->post('/clients/1002/edit')
+            ->assertRedirect('/clients/1002?editing=1');
+
+        $this->actingAs($userB)
+            ->post('/clients/1002/edit')
+            ->assertRedirect('/clients/1002')
+            ->assertSessionHas('warning', 'This client record is currently being edited by Jessica Morgan.');
+
+        $this->actingAs($userB)
+            ->get('/clients/1002')
+            ->assertStatus(200)
+            ->assertSee('This client record is currently being edited.')
+            ->assertSee('disabled', false);
+
+        $this->actingAs($userA)
+            ->post('/clients/1002/discard')
+            ->assertRedirect('/clients/1002');
+
+        $this->actingAs($userB)
+            ->post('/clients/1002/edit')
+            ->assertRedirect('/clients/1002?editing=1');
+    }
+
+    public function test_client_passport_photo_can_be_uploaded_replaced_and_deleted_on_save(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create(['name' => 'Jessica Morgan']);
+        $payload = [
+            'first_name' => 'Ana',
+            'middle_name' => 'Maria',
+            'surname' => 'Santos',
+            'dob' => '1998-02-03',
+            'mobile' => '+61 412 555 999',
+            'email' => 'ana.updated@example.test',
+            'nationality' => 'Philippine',
+            'current_location' => 'Sydney',
+            'street' => '5 King Street',
+            'suburb' => 'Sydney',
+            'state' => 'NSW',
+            'postcode' => '2000',
+            'admin_office' => 'Sydney',
+            'client_status' => 'Active',
+            'current_visa' => 'Student visa',
+            'visa_expiry' => '2027-03-04',
+            'notes' => 'Updated record note',
+        ];
+
+        $this->actingAs($user)->post('/clients/1001/edit');
+
+        $this->actingAs($user)
+            ->patch('/clients/1001', $payload + [
+                'passport_photo' => UploadedFile::fake()->image('passport-photo.jpg', 480, 620)->size(256),
+            ])
+            ->assertRedirect('/clients/1001')
+            ->assertSessionHas('success', 'Success! Client changes were saved.');
+
+        $firstPhotoPath = (string) Client::where('client_id', 1001)->value('passport_photo_path');
+
+        $this->assertStringStartsWith('client-passport-photos/', $firstPhotoPath);
+        Storage::disk('public')->assertExists($firstPhotoPath);
+
+        $this->actingAs($user)
+            ->get('/clients/1001')
+            ->assertStatus(200)
+            ->assertSee('/storage/'.$firstPhotoPath, false);
+
+        $this->actingAs($user)->post('/clients/1001/edit');
+
+        $this->actingAs($user)
+            ->patch('/clients/1001', $payload + [
+                'passport_photo' => UploadedFile::fake()->image('replacement-photo.png', 480, 620)->size(300),
+            ])
+            ->assertRedirect('/clients/1001');
+
+        $replacementPhotoPath = (string) Client::where('client_id', 1001)->value('passport_photo_path');
+
+        $this->assertNotSame($firstPhotoPath, $replacementPhotoPath);
+        Storage::disk('public')->assertMissing($firstPhotoPath);
+        Storage::disk('public')->assertExists($replacementPhotoPath);
+
+        $this->actingAs($user)->post('/clients/1001/edit');
+
+        $this->actingAs($user)
+            ->patch('/clients/1001', $payload + [
+                'delete_passport_photo' => '1',
+            ])
+            ->assertRedirect('/clients/1001');
+
+        $this->assertNull(Client::where('client_id', 1001)->value('passport_photo_path'));
+        Storage::disk('public')->assertMissing($replacementPhotoPath);
+    }
+
+    public function test_website_contact_form_creates_client_and_lead_then_redirects(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Jessica Morgan',
+            'offices' => ['MEL'],
+        ]);
+
+        $this->get('/contact')
+            ->assertStatus(200)
+            ->assertSee('Contact Us')
+            ->assertSee('name="first_name"', false)
+            ->assertSee('name="captcha"', false)
+            ->assertSee('id="captcha-image"', false)
+            ->assertSee('/website/captcha/image', false)
+            ->assertSee('Melbourne');
+
+        $response = $this
+            ->withSession(['psc.website_forms.captcha' => 'ABC123'])
+            ->from('/contact')
+            ->post('/contact', $this->websiteLeadPayload([
+                'captcha' => 'ABC123',
+                'enquiry' => 'I want to study nursing.',
+            ]));
+
+        $response->assertRedirect('https://progress-study.com/contact-received');
+
+        $client = Client::query()->where('email', 'kim.website@example.test')->firstOrFail();
+
+        $this->assertSame(1018, (int) $client->client_id);
+        $this->assertSame('Prospect', $client->client_status);
+        $this->assertSame('Web', $client->tag);
+        $this->assertSame('Jessica Morgan', $client->primary_counsellor);
+
+        $websiteNotes = json_decode((string) $client->notes, true);
+
+        $this->assertSame('Website enquiry: I want to study nursing.', $websiteNotes[0]['body'] ?? null);
+        $this->assertSame('PSC Website Form', $websiteNotes[0]['author'] ?? null);
+        $this->assertNotEmpty($websiteNotes[0]['datetime'] ?? null);
+
+        $this->assertDatabaseHas('leads', [
+            'lead_id' => 2201,
+            'client_id' => $client->id,
+            'assigned_user_id' => $user->id,
+            'assigned_name' => 'Jessica Morgan',
+            'assigned_office_code' => 'MEL',
+            'form_type' => 'contact_us',
+            'source' => 'Contact us',
+            'status' => 'New',
+            'email' => 'kim.website@example.test',
+            'mobile' => '+61 412 555 333',
+            'current_location' => 'Melbourne',
+        ]);
+    }
+
+    public function test_website_consultation_form_links_existing_client_and_redirects(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Priya Raman',
+            'offices' => ['SYD'],
+        ]);
+        $client = Client::create([
+            'client_id' => 1018,
+            'created_by_user_id' => $user->id,
+            'first_name' => 'Existing',
+            'middle_name' => '',
+            'surname' => 'Client',
+            'dob' => null,
+            'mobile' => '+61 412 555 444',
+            'email' => 'existing.website@example.test',
+            'nationality' => 'Australia',
+            'current_location' => 'Sydney',
+            'street' => '',
+            'suburb' => '',
+            'state' => '',
+            'postcode' => '',
+            'overseas_address' => '',
+            'admin_office' => 'Sydney',
+            'client_status' => 'Prospect',
+            'current_visa' => '',
+            'visa_expiry' => null,
+            'notes' => '',
+            'primary_counsellor' => 'Priya Raman',
+            'secondary_counsellor' => '',
+            'migration_agent' => '',
+            'tag' => 'Web',
+        ]);
+
+        $this
+            ->withSession(['psc.website_forms.captcha' => 'XYZ789'])
+            ->from('/book-a-free-consultation')
+            ->post('/book-a-free-consultation', $this->websiteLeadPayload([
+                'first_name' => 'Existing',
+                'surname' => 'Client',
+                'email' => 'existing.website@example.test',
+                'phone_number' => '412 555 444',
+                'current_location' => 'Sydney',
+                'captcha' => 'XYZ789',
+            ]))
+            ->assertRedirect('https://progress-study.com/request-received');
+
+        $this->assertSame(1, Client::query()->where('email', 'existing.website@example.test')->count());
+        $this->assertDatabaseHas('leads', [
+            'client_id' => $client->id,
+            'assigned_user_id' => $user->id,
+            'assigned_office_code' => 'SYD',
+            'form_type' => 'book_consultation',
+            'source' => 'Book a free consultation',
+        ]);
+    }
+
+    public function test_website_forms_require_a_valid_captcha(): void
+    {
+        $refresh = $this
+            ->withSession(['psc.website_forms.captcha' => 'ABC123'])
+            ->getJson('/website/captcha/refresh');
+
+        $refresh
+            ->assertOk()
+            ->assertJsonStructure(['image_url']);
+
+        $this->assertArrayNotHasKey('captcha', $refresh->json());
+
+        $this
+            ->withSession(['psc.website_forms.captcha' => 'ABC123'])
+            ->get('/website/captcha/image')
+            ->assertOk()
+            ->assertHeader('content-type', 'image/svg+xml');
+
+        $this
+            ->withSession(['psc.website_forms.captcha' => 'ABC123'])
+            ->from('/contact')
+            ->post('/contact', $this->websiteLeadPayload([
+                'captcha' => 'WRONG1',
+            ]))
+            ->assertRedirect('/contact')
+            ->assertSessionHasErrors(['captcha']);
+
+        $this->assertDatabaseCount('clients', 0);
+        $this->assertDatabaseCount('leads', 0);
+    }
+
+    /**
+     * @param array<string, string> $overrides
+     * @return array<string, string>
+     */
+    private function websiteLeadPayload(array $overrides = []): array
+    {
+        return $overrides + [
+            'first_name' => 'Kim',
+            'middle_name' => 'Yves',
+            'surname' => 'Ramirez',
+            'email' => 'kim.website@example.test',
+            'phone_country_code' => '+61',
+            'phone_number' => '412 555 333',
+            'nationality' => 'Philippines',
+            'current_location' => 'Melbourne',
+            'enquiry' => '',
+            'captcha' => 'ABC123',
+        ];
     }
 }

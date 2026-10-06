@@ -17,7 +17,7 @@
             </a>
             <a href="{{ route('clients.create') }}" class="inline-flex min-h-10 items-center gap-2 rounded-md bg-[#1f7890] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[#17657a]">
                 {!! payroll_icon('plus', 'h-4 w-4') !!}
-                <span>Add client</span>
+                <span>Create Client</span>
             </a>
         </div>
     </header>

@@ -2,7 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\Location;
 use App\Models\User;
+use App\Support\PSC\WebsiteLeadReferences;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -23,5 +25,16 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
             ]
         );
+
+        foreach (WebsiteLeadReferences::defaultLocations() as $index => $location) {
+            Location::updateOrCreate(
+                ['name' => $location['name']],
+                [
+                    'office_code' => $location['office_code'],
+                    'active' => true,
+                    'sort_order' => $index + 1,
+                ]
+            );
+        }
     }
 }
