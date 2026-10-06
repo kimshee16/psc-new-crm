@@ -1,12 +1,19 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientsController;
 use App\Http\Controllers\MyOfficesController;
 use App\Http\Controllers\WebsiteLeadFormController;
 
 $registerRoutes = function () {
+    Route::get('/run-migration', function () {
+        Artisan::call('migrate:refresh');
+
+        return 'Database migrated successfully!';
+    });
+
     Route::get('/contact', [WebsiteLeadFormController::class, 'contact'])->name('website.contact');
     Route::post('/contact', [WebsiteLeadFormController::class, 'submitContact'])->name('website.contact.submit');
     Route::get('/book-a-free-consultation', [WebsiteLeadFormController::class, 'consultation'])->name('website.consultation');
