@@ -14,6 +14,16 @@ $registerRoutes = function () {
         return 'Database migrated successfully!';
     });
 
+    Route::get('/run-seeder', function () {
+        Artisan::call('db:seed', ['--force' => true]);
+
+        return implode(PHP_EOL, [
+            'Database seeded successfully!',
+            'Admin email: admin@psccrm.test',
+            'Admin password: password',
+        ]);
+    });
+
     Route::get('/contact', [WebsiteLeadFormController::class, 'contact'])->name('website.contact');
     Route::post('/contact', [WebsiteLeadFormController::class, 'submitContact'])->name('website.contact.submit');
     Route::get('/book-a-free-consultation', [WebsiteLeadFormController::class, 'consultation'])->name('website.consultation');

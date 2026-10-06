@@ -102,7 +102,7 @@ class WebsiteLeadFormController extends Controller
         $assignment = $this->assignmentService->assign((string) $validated['current_location']);
 
         DB::transaction(function () use ($validated, $form, $phoneNumber, $mobile, $assignment): void {
-            $client = $this->clientForSubmission($validated, $mobile, $assignment);
+            $client = $this->clientForSubmission($validated, $phoneNumber, $mobile, $assignment);
 
             Lead::create([
                 'lead_id' => $this->nextLeadId(),
@@ -179,18 +179,26 @@ class WebsiteLeadFormController extends Controller
      * @param array<string, mixed> $validated
      * @param array{user: \App\Models\User|null, name: string, office_code: string, office: string, reason: string} $assignment
      */
-    private function clientForSubmission(array $validated, string $mobile, array $assignment): Client
+    private function clientForSubmission(array $validated, string $phoneNumber, string $mobile, array $assignment): Client
     {
         $email = strtolower((string) $validated['email']);
+        $phoneCountryCode = (string) $validated['phone_country_code'];
         $client = Client::query()
             ->where('email', $email)
-            ->orWhere('mobile', $mobile)
+            ->orWhere(function ($query) use ($phoneCountryCode, $phoneNumber, $mobile): void {
+                $query->where(function ($query) use ($phoneCountryCode, $phoneNumber): void {
+                    $query->where('phone_country_code', $phoneCountryCode)
+                        ->where('phone_number', $phoneNumber);
+                })->orWhere('mobile', $mobile);
+            })
             ->first();
 
         $attributes = [
             'first_name' => (string) $validated['first_name'],
             'middle_name' => (string) ($validated['middle_name'] ?? ''),
             'surname' => (string) ($validated['surname'] ?? ''),
+            'phone_country_code' => $phoneCountryCode,
+            'phone_number' => $phoneNumber,
             'mobile' => $mobile,
             'email' => $email,
             'nationality' => (string) $validated['nationality'],

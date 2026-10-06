@@ -17,6 +17,8 @@ class Client extends Model
         'middle_name',
         'surname',
         'dob',
+        'phone_country_code',
+        'phone_number',
         'mobile',
         'email',
         'nationality',

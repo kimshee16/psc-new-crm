@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\User;
+use App\Support\PSC\WebsiteLeadReferences;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -78,6 +79,7 @@ class ClientsController extends Controller
             'states' => $this->states(),
             'offices' => $this->offices(),
             'clientStatuses' => $this->statuses(),
+            'phoneCountryCodes' => WebsiteLeadReferences::phoneCountryCodes(),
             'duplicateClient' => session('duplicateClient'),
         ]);
     }
@@ -89,7 +91,8 @@ class ClientsController extends Controller
             'middle_name' => ['nullable', 'string', 'max:80'],
             'surname' => ['nullable', 'string', 'max:80'],
             'dob' => ['nullable', 'date'],
-            'mobile' => ['required', 'string', 'max:40'],
+            'phone_country_code' => ['required', 'string', Rule::in(array_keys(WebsiteLeadReferences::phoneCountryCodes()))],
+            'phone_number' => ['required', 'string', 'max:40', 'regex:/^[0-9 ()-]{6,24}$/'],
             'email' => ['required', 'email', 'max:120'],
             'nationality' => ['required', 'string', 'max:80'],
             'current_location' => ['required', 'string', 'max:120'],
@@ -113,7 +116,8 @@ class ClientsController extends Controller
         ], [], [
             'first_name' => 'first name',
             'dob' => 'DOB',
-            'mobile' => 'mobile number',
+            'phone_country_code' => 'country code',
+            'phone_number' => 'phone number',
             'email' => 'email address',
             'current_location' => 'current location',
             'admin_office' => 'admin office',
@@ -172,6 +176,7 @@ class ClientsController extends Controller
             'offices' => $this->offices(),
             'clientStatuses' => $this->statuses(),
             'visas' => $this->visas(),
+            'phoneCountryCodes' => WebsiteLeadReferences::phoneCountryCodes(),
             'isEditing' => $isEditing,
             'isLockedByAnother' => $editLock !== null && ! $ownsLock,
             'editLock' => $editLock,
@@ -483,6 +488,8 @@ class ClientsController extends Controller
                 'dob' => '',
                 'age' => '',
                 'mobile' => '',
+                'phone_country_code' => '+61',
+                'phone_number' => '',
                 'email' => '',
                 'nationality' => '',
                 'current_location' => '',
@@ -520,6 +527,8 @@ class ClientsController extends Controller
                 'middle_name' => '',
                 'surname' => $clientId,
                 'mobile' => '',
+                'phone_country_code' => '+61',
+                'phone_number' => '',
                 'email' => '',
                 'status' => 'Prospect',
                 'tag' => 'Student',
@@ -538,6 +547,8 @@ class ClientsController extends Controller
                 'dob' => $client['dob'] ?? '',
                 'age' => $this->ageFor($client['dob'] ?? ''),
                 'mobile' => $client['mobile'] ?? '',
+                'phone_country_code' => $client['phone_country_code'] ?? '+61',
+                'phone_number' => $client['phone_number'] ?? '',
                 'email' => $client['email'] ?? '',
                 'nationality' => $client['nationality'] ?? '',
                 'current_location' => $client['current_location'] ?? '',
@@ -570,6 +581,8 @@ class ClientsController extends Controller
             'dob' => '2000-04-12',
             'age' => 26,
             'mobile' => $client['mobile'] ?? '',
+            'phone_country_code' => $client['phone_country_code'] ?? '+61',
+            'phone_number' => $client['phone_number'] ?? '',
             'email' => $client['email'] ?? '',
             'nationality' => $tag === 'Student' ? 'Philippine' : 'Indian',
             'current_location' => 'Melbourne',
@@ -629,7 +642,7 @@ class ClientsController extends Controller
         $clientsById = [];
 
         foreach ([...$seedClients, ...$this->storedClients()] as $client) {
-            $clientsById[(string) $client['client_id']] = $client;
+            $clientsById[(string) $client['client_id']] = $this->clientWithPhoneParts($client);
         }
 
         return array_values($clientsById);
@@ -648,6 +661,8 @@ class ClientsController extends Controller
             'dob' => '',
             'age' => '',
             'mobile' => '',
+            'phone_country_code' => '+61',
+            'phone_number' => '',
             'email' => '',
             'nationality' => '',
             'current_location' => '',
@@ -674,6 +689,9 @@ class ClientsController extends Controller
      */
     private function storedClientAttributesFrom(array $validated, User $user, int $clientId): array
     {
+        $phoneNumber = $this->normalisePhoneNumber((string) $validated['phone_number']);
+        $phoneCountryCode = (string) $validated['phone_country_code'];
+
         return [
             'client_id' => $clientId,
             'created_by_user_id' => $user->getKey(),
@@ -681,7 +699,9 @@ class ClientsController extends Controller
             'middle_name' => (string) ($validated['middle_name'] ?? ''),
             'surname' => (string) ($validated['surname'] ?? ''),
             'dob' => $validated['dob'] ?? null,
-            'mobile' => (string) $validated['mobile'],
+            'phone_country_code' => $phoneCountryCode,
+            'phone_number' => $phoneNumber,
+            'mobile' => $this->mobileFromPhoneParts($phoneCountryCode, $phoneNumber),
             'email' => (string) $validated['email'],
             'client_status' => (string) $validated['client_status'],
             'tag' => 'Manual',
@@ -710,6 +730,9 @@ class ClientsController extends Controller
      */
     private function updatedClientAttributesFrom(array $validated, User $user, int $clientId, ?array $existing, ?string $passportPhotoPath): array
     {
+        $phoneNumber = $this->normalisePhoneNumber((string) $validated['phone_number']);
+        $phoneCountryCode = (string) $validated['phone_country_code'];
+
         return [
             'client_id' => $clientId,
             'created_by_user_id' => $existing['created_by_user_id'] ?? $user->getKey(),
@@ -717,7 +740,9 @@ class ClientsController extends Controller
             'middle_name' => (string) ($validated['middle_name'] ?? ''),
             'surname' => (string) ($validated['surname'] ?? ''),
             'dob' => $validated['dob'],
-            'mobile' => (string) $validated['mobile'],
+            'phone_country_code' => $phoneCountryCode,
+            'phone_number' => $phoneNumber,
+            'mobile' => $this->mobileFromPhoneParts($phoneCountryCode, $phoneNumber),
             'email' => (string) $validated['email'],
             'client_status' => (string) $validated['client_status'],
             'tag' => (string) ($existing['tag'] ?? 'Manual'),
@@ -767,6 +792,8 @@ class ClientsController extends Controller
             'surname' => $client->surname ?? '',
             'dob' => $client->dob?->format('Y-m-d') ?? '',
             'mobile' => $client->mobile,
+            'phone_country_code' => $client->phone_country_code ?? '+61',
+            'phone_number' => $client->phone_number ?? '',
             'email' => $client->email,
             'status' => $client->client_status,
             'client_status' => $client->client_status,
@@ -789,6 +816,52 @@ class ClientsController extends Controller
             'secondary_counsellor' => $client->secondary_counsellor ?? '',
             'migration_agent' => $client->migration_agent ?? '',
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $client
+     * @return array<string, mixed>
+     */
+    private function clientWithPhoneParts(array $client): array
+    {
+        $countryCode = trim((string) ($client['phone_country_code'] ?? ''));
+        $phoneNumber = $this->normalisePhoneNumber((string) ($client['phone_number'] ?? ''));
+
+        if ($countryCode === '' || $phoneNumber === '') {
+            [$countryCode, $phoneNumber] = $this->phonePartsFromMobile((string) ($client['mobile'] ?? ''));
+        }
+
+        $client['phone_country_code'] = $countryCode;
+        $client['phone_number'] = $phoneNumber;
+        $client['mobile'] = $phoneNumber !== ''
+            ? $this->mobileFromPhoneParts($countryCode, $phoneNumber)
+            : (string) ($client['mobile'] ?? '');
+
+        return $client;
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function phonePartsFromMobile(string $mobile): array
+    {
+        $mobile = trim($mobile);
+
+        if (preg_match('/^(\+\d{1,3})\s*(.+)$/', $mobile, $matches) === 1) {
+            return [$matches[1], $this->normalisePhoneNumber($matches[2])];
+        }
+
+        return ['+61', $this->normalisePhoneNumber($mobile)];
+    }
+
+    private function mobileFromPhoneParts(string $countryCode, string $phoneNumber): string
+    {
+        return trim($countryCode.' '.$this->normalisePhoneNumber($phoneNumber));
+    }
+
+    private function normalisePhoneNumber(string $phoneNumber): string
+    {
+        return trim((string) preg_replace('/\s+/', ' ', $phoneNumber));
     }
 
     private function nextClientIdFor(User $user): int
@@ -826,7 +899,8 @@ class ClientsController extends Controller
             'middle_name' => ['nullable', 'string', 'max:80'],
             'surname' => ['nullable', 'string', 'max:80'],
             'dob' => ['required', 'date', 'before_or_equal:today'],
-            'mobile' => ['required', 'string', 'max:40', 'regex:/^\+\d{1,3}\s?[0-9 ()-]{6,20}$/'],
+            'phone_country_code' => ['required', 'string', Rule::in(array_keys(WebsiteLeadReferences::phoneCountryCodes()))],
+            'phone_number' => ['required', 'string', 'max:40', 'regex:/^[0-9 ()-]{6,24}$/'],
             'email' => ['required', 'email', 'max:120'],
             'nationality' => ['required', 'string', Rule::in($this->nationalities())],
             'current_location' => ['required', 'string', Rule::in($this->locations())],
@@ -859,7 +933,8 @@ class ClientsController extends Controller
         return [
             'first_name' => 'first name',
             'dob' => 'DOB',
-            'mobile' => 'mobile number',
+            'phone_country_code' => 'country code',
+            'phone_number' => 'phone number',
             'email' => 'email address',
             'current_location' => 'current location',
             'client_status' => 'client status',

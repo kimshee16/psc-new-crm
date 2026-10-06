@@ -53,6 +53,12 @@
             border-color: #dc2626;
         }
 
+        .client-phone-fields {
+            display: grid;
+            grid-template-columns: minmax(156px, 0.58fr) minmax(112px, 1fr);
+            gap: 8px;
+        }
+
         .client-profile-action {
             display: inline-flex;
             min-height: 40px;
@@ -243,12 +249,19 @@
                         <input id="client-dob" name="dob" value="{{ old('dob', $client['dob']) }}" type="date" class="client-profile-control @error('dob') is-invalid @enderror">
                     </div>
                     <div class="client-profile-field">
-                        <label for="client-age" class="client-profile-label">Age</label>
-                        <input id="client-age" name="age" value="{{ $client['age'] }}" type="text" readonly placeholder="Calculated" class="client-profile-control border-transparent bg-transparent px-0 italic text-slate-500 shadow-none focus:border-transparent focus:ring-0">
+                        <div class="client-profile-label">Age</div>
+                        <div id="client-age" class="min-h-7 py-1 text-sm text-slate-700">{{ $client['age'] !== '' ? $client['age'] : 'Calculated' }}</div>
                     </div>
                     <div class="client-profile-field">
-                        <label for="client-mobile" class="client-profile-label">Mobile number<span class="client-profile-required">*</span></label>
-                        <input id="client-mobile" name="mobile" value="{{ old('mobile', $client['mobile']) }}" type="text" required placeholder="Area code + No." class="client-profile-control @error('mobile') is-invalid @enderror">
+                        <label for="client-phone-number" class="client-profile-label">Mobile number<span class="client-profile-required">*</span></label>
+                        <div class="client-phone-fields">
+                            <select id="client-phone-country-code" name="phone_country_code" required class="client-profile-control @error('phone_country_code') is-invalid @enderror">
+                                @foreach ($phoneCountryCodes as $code => $label)
+                                    <option value="{{ $code }}" @selected(old('phone_country_code', $client['phone_country_code'] ?? '+61') === $code)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <input id="client-phone-number" name="phone_number" value="{{ old('phone_number', $client['phone_number'] ?? '') }}" type="text" required inputmode="tel" maxlength="40" pattern="[0-9 ()-]{6,24}" placeholder="412 345 678" class="client-profile-control @error('phone_number') is-invalid @enderror">
+                        </div>
                     </div>
                     <div class="client-profile-field">
                         <label for="client-email" class="client-profile-label">Email address<span class="client-profile-required">*</span></label>
@@ -490,7 +503,7 @@
 
             const calculateAge = () => {
                 if (! dob.value) {
-                    age.value = '';
+                    age.textContent = 'Calculated';
                     return;
                 }
 
@@ -503,7 +516,7 @@
                     years -= 1;
                 }
 
-                age.value = Number.isFinite(years) && years >= 0 ? years : '';
+                age.textContent = Number.isFinite(years) && years >= 0 ? years : 'Calculated';
             };
 
             form.addEventListener('input', () => {

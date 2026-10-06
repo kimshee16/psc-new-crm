@@ -75,6 +75,12 @@
             border-color: #dc2626;
         }
 
+        .client-phone-fields {
+            display: grid;
+            grid-template-columns: minmax(156px, 0.58fr) minmax(112px, 1fr);
+            gap: 8px;
+        }
+
         .client-profile-action {
             display: inline-flex;
             min-height: 40px;
@@ -146,7 +152,29 @@
             background: #fff;
         }
 
-        .client-passport-photo-frame img {
+        .client-passport-preview-button {
+            display: flex;
+            width: 100%;
+            min-height: 164px;
+            align-items: center;
+            justify-content: center;
+            border: 0;
+            background: transparent;
+            padding: 0;
+            cursor: zoom-in;
+        }
+
+        .client-passport-preview-button:focus-visible {
+            outline: 3px solid rgb(31 120 144 / 24%);
+            outline-offset: 3px;
+        }
+
+        .client-passport-preview-button.hidden {
+            display: none;
+        }
+
+        .client-passport-photo-frame img,
+        .client-passport-preview-button img {
             width: 100%;
             height: 100%;
             min-height: 164px;
@@ -162,6 +190,10 @@
             justify-content: flex-end;
             overflow: hidden;
             border-radius: 0 0 999px 999px;
+        }
+
+        .client-passport-placeholder.hidden {
+            display: none;
         }
 
         .client-passport-placeholder-head {
@@ -281,6 +313,52 @@
             display: flex;
         }
 
+        .client-passport-lightbox {
+            align-items: center;
+            background: rgb(15 23 42 / 68%);
+            padding: 28px;
+        }
+
+        .client-passport-lightbox-panel {
+            position: relative;
+            width: min(920px, 94vw);
+            border-radius: 10px;
+            background: #fff;
+            padding: 18px;
+            box-shadow: 0 24px 80px rgb(15 23 42 / 34%);
+        }
+
+        .client-passport-lightbox-close {
+            position: absolute;
+            right: 12px;
+            top: 12px;
+            display: inline-flex;
+            height: 36px;
+            width: 36px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: rgb(15 23 42 / 72%);
+            color: #fff;
+            font-size: 26px;
+            line-height: 1;
+            transition: background-color 160ms ease, transform 160ms ease;
+        }
+
+        .client-passport-lightbox-close:hover {
+            background: rgb(15 23 42 / 88%);
+            transform: translateY(-1px);
+        }
+
+        .client-passport-lightbox-image {
+            display: block;
+            width: 100%;
+            max-height: 78vh;
+            object-fit: contain;
+            border-radius: 6px;
+            background: #f8fafc;
+        }
+
         @media (max-width: 980px) {
             .client-profile-field {
                 grid-template-columns: 1fr;
@@ -376,12 +454,23 @@
                         <input id="client-dob" name="dob" value="{{ old('dob', $client['dob']) }}" type="date" max="{{ now()->toDateString() }}" required class="client-profile-control @error('dob') is-invalid @enderror" @disabled(! $isEditing)>
                     </div>
                     <div class="client-profile-field">
-                        <label for="client-age" class="client-profile-label">Age</label>
-                        <input id="client-age" name="age" value="{{ $client['age'] }}" type="text" readonly placeholder="Calculated" class="client-profile-control border-transparent bg-transparent px-0 italic text-slate-500 shadow-none focus:border-transparent focus:ring-0">
+                        <div class="client-profile-label">Age</div>
+                        <div id="client-age" class="min-h-7 py-1 text-sm text-slate-700">{{ $client['age'] !== '' ? $client['age'] : 'Calculated' }}</div>
                     </div>
                     <div class="client-profile-field">
-                        <label for="client-mobile" class="client-profile-label">Mobile number<span class="client-profile-required">*</span></label>
-                        <input id="client-mobile" name="mobile" value="{{ old('mobile', $client['mobile']) }}" type="text" required placeholder="+61 412 345 678" class="client-profile-control @error('mobile') is-invalid @enderror" @disabled(! $isEditing)>
+                        <label for="client-phone-number" class="client-profile-label">Mobile number<span class="client-profile-required">*</span></label>
+                        @if ($isEditing)
+                            <div class="client-phone-fields">
+                                <select id="client-phone-country-code" name="phone_country_code" required class="client-profile-control @error('phone_country_code') is-invalid @enderror">
+                                    @foreach ($phoneCountryCodes as $code => $label)
+                                        <option value="{{ $code }}" @selected(old('phone_country_code', $client['phone_country_code'] ?? '+61') === $code)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <input id="client-phone-number" name="phone_number" value="{{ old('phone_number', $client['phone_number'] ?? '') }}" type="text" required inputmode="tel" maxlength="40" pattern="[0-9 ()-]{6,24}" placeholder="412 345 678" class="client-profile-control @error('phone_number') is-invalid @enderror">
+                            </div>
+                        @else
+                            <div class="text-sm text-slate-700">{{ ($client['phone_country_code'] ?? '+61').($client['phone_number'] ?? '') }}</div>
+                        @endif
                     </div>
                     <div class="client-profile-field">
                         <label for="client-email" class="client-profile-label">Email address<span class="client-profile-required">*</span></label>
@@ -456,7 +545,9 @@
                     <input id="client-passport-photo" name="passport_photo" type="file" accept="image/*" class="sr-only" @disabled(! $isEditing)>
                     <input id="client-delete-passport-photo" name="delete_passport_photo" type="hidden" value="0">
                     <div id="client-passport-photo-frame" class="client-passport-photo-frame">
-                        <img id="client-passport-photo-preview" src="{{ $client['passport_photo_url'] }}" alt="Passport photo" @class(['hidden' => $client['passport_photo_url'] === ''])>
+                        <button id="client-passport-preview-open" type="button" title="Preview passport photo" @class(['client-passport-preview-button', 'hidden' => $client['passport_photo_url'] === ''])>
+                            <img id="client-passport-photo-preview" src="{{ $client['passport_photo_url'] }}" alt="Passport photo">
+                        </button>
                         <div id="client-passport-photo-placeholder" @class(['client-passport-placeholder', 'hidden' => $client['passport_photo_url'] !== ''])>
                             <div class="client-passport-placeholder-head"></div>
                             <div class="client-passport-placeholder-body"></div>
@@ -643,6 +734,19 @@
         </div>
     @endif
 
+    <div id="client-passport-lightbox" class="client-profile-modal client-passport-lightbox" aria-hidden="true">
+        <div role="dialog" aria-modal="true" aria-labelledby="client-passport-lightbox-title" class="client-passport-lightbox-panel">
+            <div class="mb-3 pr-12">
+                <h2 id="client-passport-lightbox-title" class="text-lg font-extrabold text-[#101820]">Passport photo</h2>
+            </div>
+            <button id="client-passport-lightbox-close" type="button" class="client-passport-lightbox-close" title="Close preview">
+                <span aria-hidden="true">&times;</span>
+                <span class="sr-only">Close preview</span>
+            </button>
+            <img id="client-passport-lightbox-image" src="{{ $client['passport_photo_url'] }}" alt="Enlarged passport photo" class="client-passport-lightbox-image">
+        </div>
+    </div>
+
     <script>
         (() => {
             const isEditing = @json($isEditing);
@@ -663,7 +767,11 @@
             const photoInput = document.getElementById('client-passport-photo');
             const photoDeleteInput = document.getElementById('client-delete-passport-photo');
             const photoPreview = document.getElementById('client-passport-photo-preview');
+            const photoPreviewButton = document.getElementById('client-passport-preview-open');
             const photoPlaceholder = document.getElementById('client-passport-photo-placeholder');
+            const passportLightbox = document.getElementById('client-passport-lightbox');
+            const passportLightboxImage = document.getElementById('client-passport-lightbox-image');
+            const passportLightboxClose = document.getElementById('client-passport-lightbox-close');
             let cleanState = new FormData(form);
             let isLeavingByAction = false;
             let previewObjectUrl = null;
@@ -722,8 +830,9 @@
                 if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
 
                 previewObjectUrl = null;
-                photoPreview?.classList.add('hidden');
+                photoPreviewButton?.classList.add('hidden');
                 photoPreview?.removeAttribute('src');
+                passportLightboxImage?.removeAttribute('src');
                 photoPlaceholder?.classList.remove('hidden');
             };
             const showPhotoPreview = (src) => {
@@ -733,8 +842,21 @@
                 }
 
                 photoPreview.src = src;
-                photoPreview.classList.remove('hidden');
+                passportLightboxImage.src = src;
+                photoPreviewButton?.classList.remove('hidden');
                 photoPlaceholder?.classList.add('hidden');
+            };
+            const openPassportLightbox = () => {
+                if (! photoPreview?.getAttribute('src')) return;
+
+                passportLightbox?.classList.add('is-open');
+                passportLightbox?.setAttribute('aria-hidden', 'false');
+                passportLightboxClose?.focus();
+            };
+            const closePassportLightbox = () => {
+                passportLightbox?.classList.remove('is-open');
+                passportLightbox?.setAttribute('aria-hidden', 'true');
+                photoPreviewButton?.focus();
             };
             const openModal = () => {
                 modal?.classList.add('is-open');
@@ -748,7 +870,7 @@
             };
             const calculateAge = () => {
                 if (! dob?.value) {
-                    age.value = '';
+                    age.textContent = 'Calculated';
                     return;
                 }
 
@@ -761,7 +883,7 @@
                     years -= 1;
                 }
 
-                age.value = Number.isFinite(years) && years >= 0 ? years : '';
+                age.textContent = Number.isFinite(years) && years >= 0 ? years : 'Calculated';
             };
 
             form.addEventListener('input', syncDirtyState);
@@ -784,6 +906,12 @@
             });
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape' && modal?.classList.contains('is-open')) closeModal();
+                if (event.key === 'Escape' && passportLightbox?.classList.contains('is-open')) closePassportLightbox();
+            });
+            photoPreviewButton?.addEventListener('click', openPassportLightbox);
+            passportLightboxClose?.addEventListener('click', closePassportLightbox);
+            passportLightbox?.addEventListener('click', (event) => {
+                if (event.target === passportLightbox) closePassportLightbox();
             });
             addNote?.addEventListener('click', () => {
                 const note = noteTemplate();

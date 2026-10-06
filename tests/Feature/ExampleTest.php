@@ -192,7 +192,8 @@ class ExampleTest extends TestCase
             'middle_name' => 'Yves',
             'surname' => 'Ramirez',
             'dob' => '1997-06-10',
-            'mobile' => '+61 412 555 111',
+            'phone_country_code' => '+61',
+            'phone_number' => '412 555 111',
             'email' => 'kim@example.test',
             'nationality' => 'Philippine',
             'current_location' => 'Sydney',
@@ -216,6 +217,9 @@ class ExampleTest extends TestCase
             'middle_name' => 'Yves',
             'surname' => 'Ramirez',
             'dob' => '1997-06-10',
+            'phone_country_code' => '+61',
+            'phone_number' => '412 555 111',
+            'mobile' => '+61 412 555 111',
             'email' => 'kim@example.test',
             'client_status' => 'Active',
             'admin_office' => 'Sydney',
@@ -250,7 +254,8 @@ class ExampleTest extends TestCase
             ->from('/clients/create')
             ->post('/clients', [
                 'first_name' => '',
-                'mobile' => '',
+                'phone_country_code' => '',
+                'phone_number' => '',
                 'email' => '',
                 'nationality' => '',
                 'current_location' => '',
@@ -260,7 +265,8 @@ class ExampleTest extends TestCase
             ->assertRedirect('/clients/create')
             ->assertSessionHasErrors([
                 'first_name',
-                'mobile',
+                'phone_country_code',
+                'phone_number',
                 'email',
                 'nationality',
                 'current_location',
@@ -283,7 +289,8 @@ class ExampleTest extends TestCase
             'middle_name' => 'Maria',
             'surname' => 'Santos',
             'dob' => '2000-04-12',
-            'mobile' => '+61 412 555 222',
+            'phone_country_code' => '+61',
+            'phone_number' => '412 555 222',
             'email' => 'ana.duplicate@example.test',
             'nationality' => 'Philippine',
             'current_location' => 'Melbourne',
@@ -334,7 +341,8 @@ class ExampleTest extends TestCase
             ->patch('/clients/1001', [
                 'first_name' => '',
                 'dob' => now()->addDay()->toDateString(),
-                'mobile' => '0412345678',
+                'phone_country_code' => '',
+                'phone_number' => '0412.ABC',
                 'email' => 'invalid-email',
                 'nationality' => 'Atlantis',
                 'current_location' => '',
@@ -345,7 +353,8 @@ class ExampleTest extends TestCase
             ->assertSessionHasErrors([
                 'first_name',
                 'dob',
-                'mobile',
+                'phone_country_code',
+                'phone_number',
                 'email',
                 'nationality',
                 'current_location',
@@ -359,7 +368,8 @@ class ExampleTest extends TestCase
                 'middle_name' => 'Maria',
                 'surname' => '',
                 'dob' => '1998-02-03',
-                'mobile' => '+61 412 555 999',
+                'phone_country_code' => '+61',
+                'phone_number' => '412 555 999',
                 'email' => 'ana.updated@example.test',
                 'nationality' => 'Philippine',
                 'current_location' => 'Sydney',
@@ -381,6 +391,8 @@ class ExampleTest extends TestCase
             'first_name' => 'Ana',
             'surname' => '',
             'dob' => '1998-02-03',
+            'phone_country_code' => '+61',
+            'phone_number' => '412 555 999',
             'mobile' => '+61 412 555 999',
             'email' => 'ana.updated@example.test',
             'current_location' => 'Sydney',
@@ -405,7 +417,8 @@ class ExampleTest extends TestCase
             'middle_name' => 'Maria',
             'surname' => 'Santos',
             'dob' => '1998-02-03',
-            'mobile' => '+61 412 555 999',
+            'phone_country_code' => '+61',
+            'phone_number' => '412 555 999',
             'email' => 'ana.notes@example.test',
             'nationality' => 'Philippine',
             'current_location' => 'Sydney',
@@ -498,7 +511,8 @@ class ExampleTest extends TestCase
             'middle_name' => 'Maria',
             'surname' => 'Santos',
             'dob' => '1998-02-03',
-            'mobile' => '+61 412 555 999',
+            'phone_country_code' => '+61',
+            'phone_number' => '412 555 999',
             'email' => 'ana.updated@example.test',
             'nationality' => 'Philippine',
             'current_location' => 'Sydney',
@@ -590,6 +604,8 @@ class ExampleTest extends TestCase
         $this->assertSame('Prospect', $client->client_status);
         $this->assertSame('Web', $client->tag);
         $this->assertSame('Jessica Morgan', $client->primary_counsellor);
+        $this->assertSame('+61', $client->phone_country_code);
+        $this->assertSame('412 555 333', $client->phone_number);
 
         $websiteNotes = json_decode((string) $client->notes, true);
 
@@ -607,6 +623,8 @@ class ExampleTest extends TestCase
             'source' => 'Contact us',
             'status' => 'New',
             'email' => 'kim.website@example.test',
+            'phone_country_code' => '+61',
+            'phone_number' => '412 555 333',
             'mobile' => '+61 412 555 333',
             'current_location' => 'Melbourne',
         ]);
@@ -625,6 +643,8 @@ class ExampleTest extends TestCase
             'middle_name' => '',
             'surname' => 'Client',
             'dob' => null,
+            'phone_country_code' => '+61',
+            'phone_number' => '412 555 444',
             'mobile' => '+61 412 555 444',
             'email' => 'existing.website@example.test',
             'nationality' => 'Australia',
