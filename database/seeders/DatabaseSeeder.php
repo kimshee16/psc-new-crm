@@ -3,7 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\Client;
+use App\Models\EducationLevel;
 use App\Models\Location;
+use App\Models\PscEvent;
 use App\Models\User;
 use App\Support\PSC\WebsiteLeadReferences;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -23,6 +25,8 @@ class DatabaseSeeder extends Seeder
                 'name' => 'PSC Admin',
                 'account_type' => User::ACCOUNT_TYPE_ADMIN,
                 'offices' => ['MEL', 'SYD', 'BNE', 'PER', 'ADL'],
+                'default_office_code' => 'MEL',
+                'include_in_round_robin' => true,
                 'password' => Hash::make('password'),
             ]
         );
@@ -37,6 +41,47 @@ class DatabaseSeeder extends Seeder
                     'active' => true,
                     'sort_order' => $index + 1,
                 ]
+            );
+        }
+
+        $educationLevels = WebsiteLeadReferences::defaultEducationLevels();
+
+        EducationLevel::query()
+            ->whereNotIn('name', $educationLevels)
+            ->update(['active' => false]);
+
+        foreach ($educationLevels as $index => $educationLevel) {
+            EducationLevel::updateOrCreate(
+                ['name' => $educationLevel],
+                [
+                    'active' => true,
+                    'sort_order' => $index + 1,
+                ]
+            );
+        }
+
+        $this->seedEvents();
+    }
+
+    private function seedEvents(): void
+    {
+        $events = [
+            [
+                'name' => 'Free Study Pathways Information Session',
+                'starts_at' => now()->addWeeks(2)->setTime(17, 30),
+                'location' => 'Progress Study Consultancy Melbourne Office',
+            ],
+            [
+                'name' => 'Student Visa and Admissions Briefing',
+                'starts_at' => now()->addWeeks(4)->setTime(15, 0),
+                'location' => 'Online',
+            ],
+        ];
+
+        foreach ($events as $event) {
+            PscEvent::updateOrCreate(
+                ['name' => $event['name']],
+                $event + ['active' => true]
             );
         }
     }

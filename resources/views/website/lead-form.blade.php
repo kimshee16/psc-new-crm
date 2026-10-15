@@ -6,6 +6,19 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <title>{{ $title }}</title>
         @vite('resources/css/app.css')
+        <style>
+            .psc-phone-fields {
+                display: grid;
+                grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+                gap: 14px;
+            }
+
+            @media (max-width: 640px) {
+                .psc-phone-fields {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
     </head>
     <body class="bg-slate-50 font-sans text-[#101820]">
         <main class="mx-auto min-h-screen w-full max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
@@ -38,11 +51,17 @@
                         </label>
 
                         <label class="block">
-                            <span class="text-sm font-bold text-slate-700">Last Name</span>
-                            <input name="surname" value="{{ old('surname') }}" maxlength="80" pattern="[A-Za-z0-9 ]+" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-[#1f7890] focus:ring-2 focus:ring-[#1f7890]/15">
+                            <span class="text-sm font-bold text-slate-700">Last Name <span class="text-red-600">*</span></span>
+                            <input name="surname" value="{{ old('surname') }}" required maxlength="80" pattern="[A-Za-z0-9 ]+" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-[#1f7890] focus:ring-2 focus:ring-[#1f7890]/15">
                             @error('surname') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                         </label>
                     </div>
+
+                    <label class="block">
+                        <span class="text-sm font-bold text-slate-700">Date of Birth <span class="text-red-600">*</span></span>
+                        <input type="date" name="dob" value="{{ old('dob') }}" required max="{{ now()->toDateString() }}" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-[#1f7890] focus:ring-2 focus:ring-[#1f7890]/15">
+                        @error('dob') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
+                    </label>
 
                     <label class="block">
                         <span class="text-sm font-bold text-slate-700">Email <span class="text-red-600">*</span></span>
@@ -50,22 +69,23 @@
                         @error('email') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                     </label>
 
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-[180px_1fr]">
-                        <label class="block">
-                            <span class="text-sm font-bold text-slate-700">Country Code <span class="text-red-600">*</span></span>
-                            <select name="phone_country_code" required class="mt-1 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-[#1f7890] focus:ring-2 focus:ring-[#1f7890]/15">
-                                @foreach ($phoneCountryCodes as $code => $label)
-                                    <option value="{{ $code }}" @selected(old('phone_country_code', '+61') === $code)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                            @error('phone_country_code') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
-                        </label>
+                    <div>
+                        <span class="block text-sm font-bold text-slate-700">Phone Number <span class="text-red-600">*</span></span>
+                        <div class="psc-phone-fields mt-1">
+                            <div>
+                                <select name="phone_country_code" required aria-label="Country code" class="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-[#1f7890] focus:ring-2 focus:ring-[#1f7890]/15">
+                                    @foreach ($phoneCountryCodes as $code => $label)
+                                        <option value="{{ $code }}" @selected(old('phone_country_code', '+61') === $code)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                @error('phone_country_code') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
+                            </div>
 
-                        <label class="block">
-                            <span class="text-sm font-bold text-slate-700">Phone Number <span class="text-red-600">*</span></span>
-                            <input name="phone_number" value="{{ old('phone_number') }}" required maxlength="40" pattern="[0-9 ()-]{6,24}" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-[#1f7890] focus:ring-2 focus:ring-[#1f7890]/15">
-                            @error('phone_number') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
-                        </label>
+                            <div>
+                                <input name="phone_number" value="{{ old('phone_number') }}" required maxlength="40" pattern="[0-9 ()-]{6,24}" inputmode="tel" aria-label="Phone number" class="h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-[#1f7890] focus:ring-2 focus:ring-[#1f7890]/15">
+                                @error('phone_number') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
+                            </div>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -82,12 +102,12 @@
 
                         <label class="block">
                             <span class="text-sm font-bold text-slate-700">Current Location <span class="text-red-600">*</span></span>
-                            <input list="{{ $formType }}-locations" name="current_location" value="{{ old('current_location') }}" required maxlength="120" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-[#1f7890] focus:ring-2 focus:ring-[#1f7890]/15">
-                            <datalist id="{{ $formType }}-locations">
+                            <select name="current_location" required class="mt-1 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none transition focus:border-[#1f7890] focus:ring-2 focus:ring-[#1f7890]/15">
+                                <option value="">Select location</option>
                                 @foreach ($locations as $location)
-                                    <option value="{{ $location }}"></option>
+                                    <option value="{{ $location }}" @selected(old('current_location') === $location)>{{ $location }}</option>
                                 @endforeach
-                            </datalist>
+                            </select>
                             @error('current_location') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                         </label>
                     </div>

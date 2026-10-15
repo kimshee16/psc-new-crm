@@ -313,6 +313,19 @@
             display: flex;
         }
 
+        #client-create-application-modal {
+            align-items: center;
+            padding: 20px;
+        }
+
+        .client-create-application-dialog {
+            width: min(420px, calc(100vw - 32px));
+            border-radius: 8px;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 20px 45px rgb(15 23 42 / 24%);
+        }
+
         .client-passport-lightbox {
             align-items: center;
             background: rgb(15 23 42 / 68%);
@@ -599,8 +612,8 @@
         <section class="mt-11">
             <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 class="text-lg font-extrabold text-[#101820]">Active Applications and Leads</h2>
-                <button type="button" class="client-profile-action client-profile-primary">
-                    Create Service
+                <button id="client-create-application-open" type="button" class="client-profile-action client-profile-primary" @disabled($isEditing)>
+                    Create Application
                 </button>
             </div>
             <div class="overflow-x-auto rounded border border-[#d8dee8] bg-white">
@@ -618,7 +631,7 @@
                     <tbody>
                         @foreach ($client['applications'] as $application)
                             <tr>
-                                <td><a href="{{ route('applications') }}" class="font-bold text-[#2472b8] underline">{{ $application['id'] }}</a></td>
+                                <td><a href="{{ $application['url'] ?? route('applications') }}" class="font-bold text-[#2472b8] underline">{{ $application['id'] }}</a></td>
                                 <td class="font-semibold text-slate-700">{{ $application['summary'] }}</td>
                                 <td>{{ $application['counsellor'] }}</td>
                                 <td>{{ $application['status'] }}</td>
@@ -626,6 +639,11 @@
                                 <td>{{ $application['last_modified'] }}</td>
                             </tr>
                         @endforeach
+                        @if ($client['applications'] === [])
+                            <tr>
+                                <td colspan="6" class="text-center text-slate-500">No active applications or leads yet.</td>
+                            </tr>
+                        @endif
                     </tbody>
                 </table>
             </div>
@@ -715,6 +733,37 @@
         </section>
     </form>
 
+    <div id="client-create-application-modal" class="client-profile-modal" aria-hidden="true">
+        <div role="dialog" aria-modal="true" aria-labelledby="client-create-application-title" class="client-create-application-dialog">
+            <div class="flex items-start justify-between gap-4">
+                <h2 id="client-create-application-title" class="text-lg font-extrabold text-[#101820]">Create Application</h2>
+                <button id="client-create-application-close" type="button" title="Close dialog" class="text-slate-500 transition hover:text-slate-900">
+                    <span aria-hidden="true" class="text-2xl leading-none">&times;</span>
+                    <span class="sr-only">Close dialog</span>
+                </button>
+            </div>
+            <form method="POST" action="{{ route('clients.applications.create', $client['client_id']) }}" class="mt-4 space-y-4">
+                @csrf
+                <label class="block text-sm font-bold text-slate-700">
+                    Service
+                    <select name="prospective_service" required class="client-profile-control mt-2 @error('prospective_service') is-invalid @enderror">
+                        @foreach ($prospectiveServices as $service)
+                            <option value="{{ $service }}" @selected(old('prospective_service') === $service)>{{ $service }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="flex items-start gap-3 text-sm font-bold text-slate-700">
+                    <input name="create_lead" value="1" type="checkbox" required class="mt-1 h-4 w-4 rounded border-slate-300 text-[#1f7890] focus:ring-[#1f7890]">
+                    <span>Lead</span>
+                </label>
+                <div class="flex flex-wrap justify-end gap-2 pt-1">
+                    <button id="client-create-application-cancel" type="button" class="client-profile-action client-profile-secondary">Cancel</button>
+                    <button type="submit" class="client-profile-action client-profile-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     @if ($isEditing)
         <div id="client-discard-modal" class="client-profile-modal" aria-hidden="true">
             <div role="dialog" aria-modal="true" aria-labelledby="client-discard-title" class="w-full max-w-[420px] rounded-xl bg-white p-6 shadow-2xl">
@@ -756,6 +805,10 @@
             const discardButton = document.getElementById('client-profile-discard');
             const modal = document.getElementById('client-discard-modal');
             const confirmDiscard = document.getElementById('client-confirm-discard');
+            const createApplicationModal = document.getElementById('client-create-application-modal');
+            const createApplicationOpen = document.getElementById('client-create-application-open');
+            const createApplicationClose = document.getElementById('client-create-application-close');
+            const createApplicationCancel = document.getElementById('client-create-application-cancel');
             const dob = document.getElementById('client-dob');
             const age = document.getElementById('client-age');
             const addNote = document.getElementById('client-add-note');
@@ -868,6 +921,16 @@
                 modal?.setAttribute('aria-hidden', 'true');
                 discardButton?.focus();
             };
+            const setCreateApplicationModalOpen = (isOpen) => {
+                createApplicationModal?.classList.toggle('is-open', isOpen);
+                createApplicationModal?.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+
+                if (isOpen) {
+                    createApplicationModal?.querySelector('select')?.focus();
+                } else {
+                    createApplicationOpen?.focus();
+                }
+            };
             const calculateAge = () => {
                 if (! dob?.value) {
                     age.textContent = 'Calculated';
@@ -897,6 +960,9 @@
             discardButton?.addEventListener('click', openModal);
             document.getElementById('client-discard-close')?.addEventListener('click', closeModal);
             document.getElementById('client-keep-editing')?.addEventListener('click', closeModal);
+            createApplicationOpen?.addEventListener('click', () => setCreateApplicationModalOpen(true));
+            createApplicationClose?.addEventListener('click', () => setCreateApplicationModalOpen(false));
+            createApplicationCancel?.addEventListener('click', () => setCreateApplicationModalOpen(false));
             confirmDiscard?.addEventListener('click', () => {
                 isLeavingByAction = true;
                 discardForm.submit();
@@ -904,8 +970,12 @@
             modal?.addEventListener('click', (event) => {
                 if (event.target === modal) closeModal();
             });
+            createApplicationModal?.addEventListener('click', (event) => {
+                if (event.target === createApplicationModal) setCreateApplicationModalOpen(false);
+            });
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape' && modal?.classList.contains('is-open')) closeModal();
+                if (event.key === 'Escape' && createApplicationModal?.classList.contains('is-open')) setCreateApplicationModalOpen(false);
                 if (event.key === 'Escape' && passportLightbox?.classList.contains('is-open')) closePassportLightbox();
             });
             photoPreviewButton?.addEventListener('click', openPassportLightbox);

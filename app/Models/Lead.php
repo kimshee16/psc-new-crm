@@ -20,17 +20,27 @@ class Lead extends Model
         'assignment_reason',
         'form_type',
         'source',
+        'psc_event_id',
+        'event_name',
         'status',
+        'priority',
+        'prospective_service',
+        'critical_date',
         'first_name',
         'middle_name',
         'surname',
+        'dob',
         'email',
         'phone_country_code',
         'phone_number',
         'mobile',
         'nationality',
         'current_location',
+        'highest_education_level',
+        'secondary_counsellor',
+        'migration_agent',
         'enquiry',
+        'notes',
         'submitted_at',
     ];
 
@@ -40,6 +50,8 @@ class Lead extends Model
     protected function casts(): array
     {
         return [
+            'dob' => 'date:Y-m-d',
+            'critical_date' => 'date:Y-m-d',
             'submitted_at' => 'datetime',
         ];
     }

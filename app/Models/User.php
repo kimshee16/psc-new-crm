@@ -33,6 +33,8 @@ class User extends Authenticatable
         'password',
         'account_type',
         'offices',
+        'default_office_code',
+        'include_in_round_robin',
     ];
 
     /**
@@ -56,6 +58,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'offices' => 'array',
+            'include_in_round_robin' => 'boolean',
         ];
     }
 
@@ -76,5 +79,17 @@ class User extends Authenticatable
         return array_values(array_unique(array_filter(
             array_map(fn ($office) => is_string($office) ? strtoupper($office) : null, $this->offices)
         )));
+    }
+
+    public function defaultOfficeCode(): ?string
+    {
+        $assignedOfficeCodes = $this->assignedOfficeCodes();
+        $configured = is_string($this->default_office_code) ? strtoupper(trim($this->default_office_code)) : '';
+
+        if ($configured !== '') {
+            return $configured;
+        }
+
+        return $assignedOfficeCodes[0] ?? null;
     }
 }

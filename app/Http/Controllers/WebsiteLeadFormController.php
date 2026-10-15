@@ -99,7 +99,10 @@ class WebsiteLeadFormController extends Controller
         $validated = $this->validatedSubmission($request);
         $phoneNumber = $this->normalisePhoneNumber((string) $validated['phone_number']);
         $mobile = $validated['phone_country_code'].' '.$phoneNumber;
-        $assignment = $this->assignmentService->assign((string) $validated['current_location']);
+        $assignment = $this->assignmentService->assign(
+            (string) $validated['nationality'],
+            (string) $validated['current_location']
+        );
 
         DB::transaction(function () use ($validated, $form, $phoneNumber, $mobile, $assignment): void {
             $client = $this->clientForSubmission($validated, $phoneNumber, $mobile, $assignment);
@@ -118,6 +121,7 @@ class WebsiteLeadFormController extends Controller
                 'first_name' => (string) $validated['first_name'],
                 'middle_name' => (string) ($validated['middle_name'] ?? ''),
                 'surname' => (string) ($validated['surname'] ?? ''),
+                'dob' => $validated['dob'],
                 'email' => strtolower((string) $validated['email']),
                 'phone_country_code' => (string) $validated['phone_country_code'],
                 'phone_number' => $phoneNumber,
@@ -142,7 +146,8 @@ class WebsiteLeadFormController extends Controller
         $validator = Validator::make($request->all(), [
             'first_name' => ['required', 'string', 'max:80', 'regex:/^[A-Za-z0-9 ]+$/'],
             'middle_name' => ['nullable', 'string', 'max:80', 'regex:/^[A-Za-z0-9 ]+$/'],
-            'surname' => ['nullable', 'string', 'max:80', 'regex:/^[A-Za-z0-9 ]+$/'],
+            'surname' => ['required', 'string', 'max:80', 'regex:/^[A-Za-z0-9 ]+$/'],
+            'dob' => ['required', 'date', 'before_or_equal:today'],
             'email' => ['required', 'email', 'max:120'],
             'phone_country_code' => ['required', 'string', Rule::in(array_keys(WebsiteLeadReferences::phoneCountryCodes()))],
             'phone_number' => ['required', 'string', 'max:40', 'regex:/^[0-9 ()-]{6,24}$/'],
@@ -153,6 +158,7 @@ class WebsiteLeadFormController extends Controller
         ], [], [
             'phone_country_code' => 'country code',
             'phone_number' => 'phone number',
+            'dob' => 'date of birth',
             'current_location' => 'current location',
             'captcha' => 'CAPTCHA code',
         ]);
@@ -183,20 +189,13 @@ class WebsiteLeadFormController extends Controller
     {
         $email = strtolower((string) $validated['email']);
         $phoneCountryCode = (string) $validated['phone_country_code'];
-        $client = Client::query()
-            ->where('email', $email)
-            ->orWhere(function ($query) use ($phoneCountryCode, $phoneNumber, $mobile): void {
-                $query->where(function ($query) use ($phoneCountryCode, $phoneNumber): void {
-                    $query->where('phone_country_code', $phoneCountryCode)
-                        ->where('phone_number', $phoneNumber);
-                })->orWhere('mobile', $mobile);
-            })
-            ->first();
+        $client = $this->clientMatchingSubmission($validated);
 
         $attributes = [
             'first_name' => (string) $validated['first_name'],
             'middle_name' => (string) ($validated['middle_name'] ?? ''),
             'surname' => (string) ($validated['surname'] ?? ''),
+            'dob' => $validated['dob'],
             'phone_country_code' => $phoneCountryCode,
             'phone_number' => $phoneNumber,
             'mobile' => $mobile,
@@ -219,7 +218,6 @@ class WebsiteLeadFormController extends Controller
         return Client::create($attributes + [
             'client_id' => $this->nextClientId(),
             'created_by_user_id' => $assignment['user']?->getKey(),
-            'dob' => null,
             'street' => '',
             'suburb' => '',
             'state' => '',
@@ -234,6 +232,19 @@ class WebsiteLeadFormController extends Controller
             'migration_agent' => '',
             'tag' => 'Web',
         ]);
+    }
+
+    /**
+     * @param array<string, mixed> $validated
+     */
+    private function clientMatchingSubmission(array $validated): ?Client
+    {
+        return Client::query()
+            ->whereRaw('LOWER(TRIM(first_name)) = ?', [strtolower(trim((string) $validated['first_name']))])
+            ->whereRaw("LOWER(TRIM(COALESCE(surname, ''))) = ?", [strtolower(trim((string) $validated['surname']))])
+            ->whereDate('dob', (string) $validated['dob'])
+            ->orderBy('id')
+            ->first();
     }
 
     private function nextClientId(): int

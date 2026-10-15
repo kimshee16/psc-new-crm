@@ -1,11 +1,15 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientsController;
+use App\Http\Controllers\ConfigurationController;
+use App\Http\Controllers\CounsellorIntakeFormController;
+use App\Http\Controllers\EventRegistrationFormController;
+use App\Http\Controllers\LeadsController;
 use App\Http\Controllers\MyOfficesController;
 use App\Http\Controllers\WebsiteLeadFormController;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Route;
 
 $registerRoutes = function () {
     Route::get('/run-migration', function () {
@@ -30,6 +34,12 @@ $registerRoutes = function () {
     Route::post('/book-a-free-consultation', [WebsiteLeadFormController::class, 'submitConsultation'])->name('website.consultation.submit');
     Route::get('/website/captcha/image', [WebsiteLeadFormController::class, 'captchaImage'])->name('website.captcha.image');
     Route::get('/website/captcha/refresh', [WebsiteLeadFormController::class, 'refreshCaptcha'])->name('website.captcha.refresh');
+    Route::get('/intake/{counsellor}', [CounsellorIntakeFormController::class, 'show'])->name('counsellor-intake.show');
+    Route::post('/intake/{counsellor}', [CounsellorIntakeFormController::class, 'submit'])->name('counsellor-intake.submit');
+    Route::get('/intake/{counsellor}/thanks', [CounsellorIntakeFormController::class, 'thanks'])->name('counsellor-intake.thanks');
+    Route::get('/events/{event}/register', [EventRegistrationFormController::class, 'show'])->name('event-registration.show');
+    Route::post('/events/{event}/register', [EventRegistrationFormController::class, 'submit'])->name('event-registration.submit');
+    Route::get('/events/{event}/register/thanks', [EventRegistrationFormController::class, 'thanks'])->name('event-registration.thanks');
 
     Route::middleware('guest')->group(function () {
         Route::get('/login', [AuthController::class, 'create'])->name('login');
@@ -47,11 +57,9 @@ $registerRoutes = function () {
 
         foreach ([
             'applications' => 'Applications',
-            'leads' => 'Leads',
             'tasks' => 'Tasks',
             'rfis' => 'RFI',
             'reports' => 'Reports',
-            'configuration' => 'Configuration',
         ] as $route => $heading) {
             Route::get('/'.$route, fn () => view('crm.section', [
                 'title' => 'PSC CRM - '.$heading,
@@ -65,10 +73,25 @@ $registerRoutes = function () {
         Route::get('/clients/create', [ClientsController::class, 'create'])->name('clients.create');
         Route::post('/clients', [ClientsController::class, 'store'])->name('clients.store');
         Route::get('/clients/search', [ClientsController::class, 'search'])->name('clients.search');
+        Route::post('/clients/{clientId}/applications', [ClientsController::class, 'createApplication'])->name('clients.applications.create');
         Route::get('/clients/{clientId}', [ClientsController::class, 'show'])->name('clients.show');
         Route::post('/clients/{clientId}/edit', [ClientsController::class, 'edit'])->name('clients.edit');
         Route::patch('/clients/{clientId}', [ClientsController::class, 'update'])->name('clients.update');
         Route::post('/clients/{clientId}/discard', [ClientsController::class, 'discard'])->name('clients.discard');
+
+        Route::get('/leads', [LeadsController::class, 'index'])->name('leads');
+        Route::get('/leads/export', [LeadsController::class, 'export'])->name('leads.export');
+        Route::patch('/leads/{leadId}', [LeadsController::class, 'update'])->name('leads.update');
+        Route::get('/leads/{leadId}', [LeadsController::class, 'show'])->name('leads.show');
+        Route::get('/leads/{leadId}/edit', [LeadsController::class, 'edit'])->name('leads.edit');
+
+        Route::get('/configuration', [ConfigurationController::class, 'index'])->name('configuration');
+        Route::post('/configuration/locations', [ConfigurationController::class, 'storeLocation'])->name('configuration.locations.store');
+        Route::patch('/configuration/locations/{location}', [ConfigurationController::class, 'updateLocation'])->name('configuration.locations.update');
+        Route::delete('/configuration/locations/{location}', [ConfigurationController::class, 'destroyLocation'])->name('configuration.locations.destroy');
+        Route::post('/configuration/education-levels', [ConfigurationController::class, 'storeEducationLevel'])->name('configuration.education-levels.store');
+        Route::patch('/configuration/education-levels/{educationLevel}', [ConfigurationController::class, 'updateEducationLevel'])->name('configuration.education-levels.update');
+        Route::delete('/configuration/education-levels/{educationLevel}', [ConfigurationController::class, 'destroyEducationLevel'])->name('configuration.education-levels.destroy');
 
         Route::prefix('my-offices')->name('my-offices.')->group(function () {
             Route::get('/', [MyOfficesController::class, 'index'])->name('index');

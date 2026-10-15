@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
+use App\Models\Lead;
 use App\Models\User;
 use App\Support\PSC\WebsiteLeadReferences;
 use Illuminate\Http\RedirectResponse;
@@ -177,6 +178,7 @@ class ClientsController extends Controller
             'clientStatuses' => $this->statuses(),
             'visas' => $this->visas(),
             'phoneCountryCodes' => WebsiteLeadReferences::phoneCountryCodes(),
+            'prospectiveServices' => $this->prospectiveServices(),
             'isEditing' => $isEditing,
             'isLockedByAnother' => $editLock !== null && ! $ownsLock,
             'editLock' => $editLock,
@@ -237,6 +239,60 @@ class ClientsController extends Controller
         $this->releaseEditLock($request, $clientId);
 
         return redirect()->route('clients.show', $clientId);
+    }
+
+    public function createApplication(Request $request, string $clientId): RedirectResponse
+    {
+        $validated = $request->validate([
+            'prospective_service' => ['required', 'string', 'max:80', Rule::in($this->prospectiveServices())],
+            'create_lead' => ['accepted'],
+        ], [], [
+            'prospective_service' => 'service',
+            'create_lead' => 'Lead checkbox',
+        ]);
+
+        $user = $request->user();
+        $sourceClient = $this->sourceClientForLead($clientId, $user);
+
+        abort_if($sourceClient === null, 404);
+
+        $client = $this->storedClientForLead($sourceClient, $user);
+        $assignedOfficeCode = $this->leadOfficeCodeFor($client, $user);
+        $offices = WebsiteLeadReferences::offices();
+        $assignedName = $this->assigneeName($user);
+
+        $lead = Lead::create([
+            'lead_id' => $this->nextLeadId(),
+            'client_id' => $client->getKey(),
+            'assigned_user_id' => $user->getKey(),
+            'assigned_name' => $assignedName,
+            'assigned_office_code' => $assignedOfficeCode,
+            'assigned_office' => ($offices[$assignedOfficeCode] ?? $client->admin_office) ?: $this->currentOfficeFor($user),
+            'assignment_reason' => 'Created manually from client record PSC-38.',
+            'form_type' => 'manual_client_record',
+            'source' => 'Manual',
+            'status' => 'New',
+            'priority' => 'medium',
+            'prospective_service' => (string) $validated['prospective_service'],
+            'first_name' => $client->first_name,
+            'middle_name' => $client->middle_name ?? '',
+            'surname' => $client->surname ?? '',
+            'dob' => $client->dob,
+            'email' => $client->email,
+            'phone_country_code' => $client->phone_country_code ?? '+61',
+            'phone_number' => $client->phone_number ?? '',
+            'mobile' => $client->mobile,
+            'nationality' => $client->nationality,
+            'current_location' => $client->current_location,
+            'secondary_counsellor' => $client->secondary_counsellor ?? '',
+            'migration_agent' => $client->migration_agent ?? '',
+            'enquiry' => 'Manual lead created from Client ID '.$client->client_id,
+            'submitted_at' => now(),
+        ]);
+
+        return redirect()
+            ->route('clients.show', $client->client_id)
+            ->with('success', 'Success! Lead ID '.$lead->lead_id.' created for '.$this->displayName($this->storedClientToArray($client)).'.');
     }
 
     /**
@@ -565,7 +621,7 @@ class ClientsController extends Controller
                 'visa_expiry' => $client['visa_expiry'] ?? '',
                 'passport_photo_path' => $client['passport_photo_path'] ?? '',
                 'passport_photo_url' => $this->passportPhotoUrlFor($client['passport_photo_path'] ?? ''),
-                'applications' => [],
+                'applications' => $this->activeLeadRowsForClientId((int) $client['id']),
                 'notes' => $client['notes'] ?? [],
                 'primary_counsellor' => $client['primary_counsellor'] ?? '',
                 'secondary_counsellor' => $client['secondary_counsellor'] ?? '',
@@ -785,6 +841,7 @@ class ClientsController extends Controller
     {
         return [
             'source' => 'database',
+            'id' => $client->getKey(),
             'client_id' => $client->client_id,
             'created_by_user_id' => $client->created_by_user_id,
             'first_name' => $client->first_name,
@@ -816,6 +873,119 @@ class ClientsController extends Controller
             'secondary_counsellor' => $client->secondary_counsellor ?? '',
             'migration_agent' => $client->migration_agent ?? '',
         ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function activeLeadRowsForClientId(int $clientId): array
+    {
+        return Lead::query()
+            ->where('client_id', $clientId)
+            ->whereNotIn('status', ['Converted', 'Withdrawn'])
+            ->orderByDesc('updated_at')
+            ->orderByDesc('lead_id')
+            ->get()
+            ->map(fn (Lead $lead): array => [
+                'id' => 'Lead ID '.$lead->lead_id,
+                'url' => route('leads.show', $lead->lead_id),
+                'summary' => trim(($lead->prospective_service ?: 'Service').' Lead'),
+                'counsellor' => $lead->assigned_name,
+                'status' => $this->leadStatusLabel((string) $lead->status),
+                'critical_date' => $lead->critical_date?->format('d/m/Y') ?? '',
+                'last_modified' => $lead->updated_at?->format('d/m/Y') ?? '',
+            ])
+            ->all();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function prospectiveServices(): array
+    {
+        return ['Study', 'Visa', 'Migration', 'Consultation', 'Other'];
+    }
+
+    private function leadStatusLabel(string $status): string
+    {
+        return $status === '' || $status === 'New' ? 'To be contacted' : $status;
+    }
+
+    private function nextLeadId(): int
+    {
+        return max((int) Lead::query()->max('lead_id'), 2200) + 1;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function sourceClientForLead(string $clientId, User $user): ?array
+    {
+        if ($clientId === '152') {
+            return $this->clientProfileFor($clientId, $user);
+        }
+
+        return collect($this->searchableClientsFor($user))
+            ->first(fn (array $client): bool => (string) $client['client_id'] === $clientId);
+    }
+
+    /**
+     * @param array<string, mixed> $sourceClient
+     */
+    private function storedClientForLead(array $sourceClient, User $user): Client
+    {
+        return Client::firstOrCreate(
+            ['client_id' => (int) $sourceClient['client_id']],
+            [
+                'created_by_user_id' => $sourceClient['created_by_user_id'] ?? $user->getKey(),
+                'first_name' => (string) $sourceClient['first_name'],
+                'middle_name' => (string) ($sourceClient['middle_name'] ?? ''),
+                'surname' => (string) ($sourceClient['surname'] ?? ''),
+                'dob' => ($sourceClient['dob'] ?? '') !== '' ? $sourceClient['dob'] : null,
+                'phone_country_code' => (string) ($sourceClient['phone_country_code'] ?? '+61'),
+                'phone_number' => (string) ($sourceClient['phone_number'] ?? ''),
+                'mobile' => (string) ($sourceClient['mobile'] ?? ''),
+                'email' => (string) ($sourceClient['email'] ?? 'client.'.$sourceClient['client_id'].'@example.test'),
+                'nationality' => (string) ($sourceClient['nationality'] ?? 'Australian'),
+                'current_location' => (string) ($sourceClient['current_location'] ?? 'Melbourne'),
+                'street' => (string) ($sourceClient['australian_address']['street'] ?? ''),
+                'suburb' => (string) ($sourceClient['australian_address']['suburb'] ?? ''),
+                'state' => (string) ($sourceClient['australian_address']['state'] ?? ''),
+                'postcode' => (string) ($sourceClient['australian_address']['postcode'] ?? ''),
+                'overseas_address' => (string) ($sourceClient['overseas_address'] ?? ''),
+                'admin_office' => (string) ($sourceClient['admin_office'] ?? $this->currentOfficeFor($user)),
+                'client_status' => (string) ($sourceClient['client_status'] ?? $sourceClient['status'] ?? 'Prospect'),
+                'current_visa' => (string) ($sourceClient['current_visa'] ?? ''),
+                'visa_expiry' => ($sourceClient['visa_expiry'] ?? '') !== '' ? $sourceClient['visa_expiry'] : null,
+                'notes' => '',
+                'primary_counsellor' => (string) ($sourceClient['primary_counsellor'] ?? $this->assigneeName($user)),
+                'secondary_counsellor' => (string) ($sourceClient['secondary_counsellor'] ?? ''),
+                'migration_agent' => (string) ($sourceClient['migration_agent'] ?? ''),
+                'tag' => (string) ($sourceClient['tag'] ?? 'Manual'),
+            ]
+        );
+    }
+
+    private function leadOfficeCodeFor(Client $client, User $user): string
+    {
+        $officeCodes = $user->assignedOfficeCodes();
+
+        if ($officeCodes !== []) {
+            return $officeCodes[0];
+        }
+
+        return $this->officeCodeForName((string) $client->admin_office);
+    }
+
+    private function officeCodeForName(string $officeName): string
+    {
+        foreach (WebsiteLeadReferences::offices() as $code => $name) {
+            if ($name === $officeName) {
+                return $code;
+            }
+        }
+
+        return 'MEL';
     }
 
     /**

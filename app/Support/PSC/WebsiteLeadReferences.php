@@ -2,7 +2,9 @@
 
 namespace App\Support\PSC;
 
+use App\Models\EducationLevel;
 use App\Models\Location;
+use Illuminate\Support\Facades\DB;
 
 class WebsiteLeadReferences
 {
@@ -243,6 +245,29 @@ class WebsiteLeadReferences
     }
 
     /**
+     * @return list<string>
+     */
+    public static function defaultEducationLevels(): array
+    {
+        return [
+            'Junior High / Secondary (below Year 12)',
+            'Senior High School (Year 12 / equivalent)',
+            'Certificate I',
+            'Certificate II',
+            'Certificate III',
+            'Certificate IV',
+            'Diploma',
+            'Advanced Diploma / Associate Degree',
+            'Bachelor Degree',
+            'Graduate Certificate',
+            'Graduate Diploma',
+            'Master Degree',
+            'Doctoral Degree (PhD)',
+            'Other / Not specified',
+        ];
+    }
+
+    /**
      * @return array<string, string>
      */
     public static function offices(): array
@@ -253,6 +278,10 @@ class WebsiteLeadReferences
             'BNE' => 'Brisbane',
             'PER' => 'Perth',
             'ADL' => 'Adelaide',
+            'JKT' => 'Jakarta',
+            'MDN' => 'Medan',
+            'DPS' => 'Bali',
+            'MNL' => 'Manila',
             'MANILA' => 'Manila',
             'PHIL-OFFSHORE' => 'Philippines Offshore',
             'LATAM' => 'LATAM',
@@ -265,19 +294,22 @@ class WebsiteLeadReferences
     public static function defaultLocations(): array
     {
         return [
-            ['name' => 'Melbourne', 'office_code' => 'MEL'],
-            ['name' => 'Sydney', 'office_code' => 'SYD'],
-            ['name' => 'Brisbane', 'office_code' => 'BNE'],
-            ['name' => 'Perth', 'office_code' => 'PER'],
-            ['name' => 'Adelaide', 'office_code' => 'ADL'],
-            ['name' => 'Manila', 'office_code' => 'MANILA'],
-            ['name' => 'Philippines Offshore', 'office_code' => 'PHIL-OFFSHORE'],
-            ['name' => 'Jakarta', 'office_code' => 'MEL'],
-            ['name' => 'Kathmandu', 'office_code' => 'MEL'],
-            ['name' => 'Mumbai', 'office_code' => 'MEL'],
-            ['name' => 'Beijing', 'office_code' => 'MEL'],
-            ['name' => 'Offshore', 'office_code' => 'MEL'],
+            ['name' => 'Indonesia - Jawa Timur', 'office_code' => 'JKT'],
+            ['name' => 'Indonesia - Jawa Barat & Banten', 'office_code' => 'JKT'],
+            ['name' => 'Indonesia - Medan', 'office_code' => 'MDN'],
+            ['name' => 'Australia - Other locations', 'office_code' => 'SYD'],
+            ['name' => 'Indonesia - Other locations', 'office_code' => 'DPS'],
+            ['name' => 'Indonesia - Kalimantan', 'office_code' => 'JKT'],
+            ['name' => 'Indonesia - Sumatera', 'office_code' => 'JKT'],
+            ['name' => 'Indonesia - Jawa Tengah', 'office_code' => 'JKT'],
+            ['name' => 'Middle East', 'office_code' => 'MNL'],
+            ['name' => 'Other Location', 'office_code' => 'MEL'],
             ['name' => 'LATAM', 'office_code' => 'LATAM'],
+            ['name' => 'Philippines', 'office_code' => 'MNL'],
+            ['name' => 'Indonesia - Bali', 'office_code' => 'DPS'],
+            ['name' => 'Indonesia - Jakarta', 'office_code' => 'JKT'],
+            ['name' => 'Australia - Melbourne', 'office_code' => 'MEL'],
+            ['name' => 'Australia - Sydney', 'office_code' => 'SYD'],
         ];
     }
 
@@ -294,10 +326,35 @@ class WebsiteLeadReferences
             ->all();
 
         if ($locations !== []) {
-            return array_values(array_map('strval', $locations));
+            $locations = array_values(array_map('strval', $locations));
+
+            if (! in_array('Other Location', $locations, true)) {
+                $locations[] = 'Other Location';
+            }
+
+            return $locations;
         }
 
         return array_column(self::defaultLocations(), 'name');
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function educationLevelNames(): array
+    {
+        $educationLevels = EducationLevel::query()
+            ->where('active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->pluck('name')
+            ->all();
+
+        if ($educationLevels !== []) {
+            return array_values(array_map('strval', $educationLevels));
+        }
+
+        return self::defaultEducationLevels();
     }
 
     public function officeCodeForLocation(string $location): string
@@ -318,5 +375,33 @@ class WebsiteLeadReferences
         }
 
         return 'MEL';
+    }
+
+    public function officeCodeForLead(string $nationality, string $currentLocation): string
+    {
+        $redirectedOfficeCode = $this->officeCodeForRedirection($nationality, $currentLocation);
+
+        if ($redirectedOfficeCode !== null) {
+            return $redirectedOfficeCode;
+        }
+
+        return $this->officeCodeForLocation($currentLocation);
+    }
+
+    public function officeCodeForRedirection(string $nationality, string $currentLocation): ?string
+    {
+        $configured = DB::table('lead_redirections')
+            ->where('active', true)
+            ->where('nationality', $nationality)
+            ->where('current_location', $currentLocation)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->value('office_code');
+
+        if (is_string($configured) && trim($configured) !== '') {
+            return strtoupper(trim($configured));
+        }
+
+        return null;
     }
 }

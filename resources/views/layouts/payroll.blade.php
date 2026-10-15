@@ -24,7 +24,7 @@
             ],
         ]] : []),
         ['route' => 'reports', 'label' => 'Reports', 'icon' => 'reports'],
-        ['route' => 'configuration', 'label' => 'Configuration', 'icon' => 'settings'],
+        ['route' => 'configuration', 'label' => 'Configuration', 'icon' => 'settings', 'activeRoutes' => ['configuration', 'configuration.locations.store', 'configuration.locations.update', 'configuration.locations.destroy', 'configuration.education-levels.store', 'configuration.education-levels.update', 'configuration.education-levels.destroy']],
     ];
 @endphp
 <!doctype html>
