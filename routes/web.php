@@ -4,14 +4,21 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientsController;
 use App\Http\Controllers\ConfigurationController;
 use App\Http\Controllers\CounsellorIntakeFormController;
+use App\Http\Controllers\CountryConfigurationController;
+use App\Http\Controllers\EventConfigurationController;
 use App\Http\Controllers\EventRegistrationFormController;
+use App\Http\Controllers\HolidaysController;
 use App\Http\Controllers\LeadsController;
 use App\Http\Controllers\MyOfficesController;
+use App\Http\Controllers\UserConfigurationController;
+use App\Http\Controllers\UserInvitationController;
 use App\Http\Controllers\WebsiteLeadFormController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 $registerRoutes = function () {
+    Route::get('/invitation/{token}', [UserInvitationController::class, 'show'])->name('invitation.accept');
+    Route::post('/invitation', [UserInvitationController::class, 'accept'])->middleware('throttle:6,1')->name('invitation.store');
     Route::get('/run-migration', function () {
         Artisan::call('migrate:refresh');
 
@@ -50,7 +57,7 @@ $registerRoutes = function () {
         ->middleware('auth')
         ->name('logout');
 
-    Route::middleware('auth')->group(function () {
+    Route::middleware(['auth', 'active-user'])->group(function () {
         Route::get('/', function () {
             return view('crm.home');
         })->name('home');
@@ -85,7 +92,29 @@ $registerRoutes = function () {
         Route::get('/leads/{leadId}', [LeadsController::class, 'show'])->name('leads.show');
         Route::get('/leads/{leadId}/edit', [LeadsController::class, 'edit'])->name('leads.edit');
 
+        Route::get('/holidays', [HolidaysController::class, 'index'])->name('holidays');
+        Route::get('/holidays/create', [HolidaysController::class, 'create'])->name('holidays.create');
+        Route::post('/holidays', [HolidaysController::class, 'store'])->name('holidays.store');
+        Route::get('/holidays/{holiday}/edit', [HolidaysController::class, 'edit'])->name('holidays.edit');
+        Route::patch('/holidays/{holiday}', [HolidaysController::class, 'update'])->name('holidays.update');
+        Route::patch('/holidays/{holiday}/cancel', [HolidaysController::class, 'cancel'])->name('holidays.cancel');
+
         Route::get('/configuration', [ConfigurationController::class, 'index'])->name('configuration');
+        Route::post('/configuration/events', [EventConfigurationController::class, 'store'])->name('configuration.events.store');
+        Route::patch('/configuration/events/{event}', [EventConfigurationController::class, 'update'])->name('configuration.events.update');
+        Route::post('/configuration/countries', [CountryConfigurationController::class, 'store'])->name('configuration.countries.store');
+        Route::patch('/configuration/countries/{country}', [CountryConfigurationController::class, 'update'])->name('configuration.countries.update');
+        Route::delete('/configuration/countries/{country}', [CountryConfigurationController::class, 'destroy'])->name('configuration.countries.destroy');
+        Route::post('/configuration/redirections', [ConfigurationController::class, 'storeRedirection'])->name('configuration.redirections.store');
+        Route::patch('/configuration/redirections/{redirection}', [ConfigurationController::class, 'updateRedirection'])->name('configuration.redirections.update');
+        Route::delete('/configuration/redirections/{redirection}', [ConfigurationController::class, 'destroyRedirection'])->name('configuration.redirections.destroy');
+        Route::post('/configuration/users', [UserConfigurationController::class, 'store'])->name('configuration.users.store');
+        Route::patch('/configuration/users', [UserConfigurationController::class, 'updateMany'])->name('configuration.users.save');
+        Route::patch('/configuration/users/{user}', [UserConfigurationController::class, 'update'])->name('configuration.users.update');
+        Route::get('/configuration/users/{user}/picture', [UserConfigurationController::class, 'picture'])->name('configuration.users.picture');
+        Route::post('/configuration/regions', [ConfigurationController::class, 'storeRegion'])->name('configuration.regions.store');
+        Route::patch('/configuration/regions/{region}', [ConfigurationController::class, 'updateRegion'])->name('configuration.regions.update');
+        Route::patch('/configuration/offices', [ConfigurationController::class, 'updateOffices'])->name('configuration.offices.update');
         Route::post('/configuration/locations', [ConfigurationController::class, 'storeLocation'])->name('configuration.locations.store');
         Route::patch('/configuration/locations/{location}', [ConfigurationController::class, 'updateLocation'])->name('configuration.locations.update');
         Route::delete('/configuration/locations/{location}', [ConfigurationController::class, 'destroyLocation'])->name('configuration.locations.destroy');

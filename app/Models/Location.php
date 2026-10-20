@@ -6,6 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class Location extends Model
 {
+    public static function isOtherLocation(string $name): bool
+    {
+        return preg_match('/\bother\b/i', $name) === 1;
+    }
+
     /**
      * @var list<string>
      */

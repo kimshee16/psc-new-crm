@@ -5,6 +5,36 @@
         $activeConfigurationTab = $activeConfigurationTab ?? 'locations';
         $configurationTabs = [
             [
+                'id' => 'events',
+                'label' => 'PSC Events',
+                'description' => 'Event details and registration links. Requirements WIP.',
+                'count' => $events->total(),
+            ],
+            [
+                'id' => 'countries',
+                'label' => 'Countries',
+                'description' => 'Country options used by nationality fields and lead redirections.',
+                'count' => $countryCount,
+            ],
+            [
+                'id' => 'users',
+                'label' => 'Users',
+                'description' => 'User access, offices and round-robin participation.',
+                'count' => $users->count(),
+            ],
+            [
+                'id' => 'regions',
+                'label' => 'Regions',
+                'description' => 'Regional groupings, offices and regional managers.',
+                'count' => $regions->count(),
+            ],
+            [
+                'id' => 'offices',
+                'label' => 'Offices',
+                'description' => 'Default office, sender identity and work allocation.',
+                'count' => $officeRecords->count(),
+            ],
+            [
                 'id' => 'locations',
                 'label' => 'Locations',
                 'description' => 'Current Location options and their default office routing.',
@@ -15,6 +45,12 @@
                 'label' => 'Highest Education Level',
                 'description' => 'Education dropdown options shown on lead forms.',
                 'count' => $educationLevels->count(),
+            ],
+            [
+                'id' => 'redirections',
+                'label' => 'Redirections',
+                'description' => 'Nationality and current-location rules for lead allocation.',
+                'count' => $redirections->count(),
             ],
         ];
         $activeTabMeta = collect($configurationTabs)->firstWhere('id', $activeConfigurationTab) ?? $configurationTabs[0];
@@ -137,7 +173,19 @@
         </aside>
 
         <div>
-            @if ($activeConfigurationTab === 'locations')
+            @if ($activeConfigurationTab === 'events')
+                @include('crm.configuration.events')
+            @elseif ($activeConfigurationTab === 'countries')
+                @include('crm.configuration.countries')
+            @elseif ($activeConfigurationTab === 'users')
+                @include('crm.configuration.users')
+            @elseif ($activeConfigurationTab === 'regions')
+                @include('crm.configuration.regions')
+            @elseif ($activeConfigurationTab === 'offices')
+                @include('crm.configuration.offices')
+            @elseif ($activeConfigurationTab === 'redirections')
+                @include('crm.configuration.redirections')
+            @elseif ($activeConfigurationTab === 'locations')
                 <section class="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
                     <h2 class="text-base font-bold text-[#101820]">Add Location</h2>
                     <form method="POST" action="{{ route('configuration.locations.store') }}" class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_240px_auto] lg:items-end">
@@ -166,7 +214,7 @@
                     <div class="flex flex-col gap-2 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                             <h2 class="text-base font-bold text-[#101820]">Location Routing</h2>
-                            <p class="mt-1 text-xs text-slate-500">These locations populate Current Location dropdowns and route new leads to the selected default office.</p>
+                            <p class="mt-1 text-xs text-slate-500">These locations populate Current Location dropdowns. All “Other” locations use the default office configured in Offices.</p>
                         </div>
                         <div class="text-xs font-bold text-slate-500">{{ $locations->count() }} total locations</div>
                     </div>
@@ -197,11 +245,16 @@
                                             </div>
                                         </td>
                                         <td class="px-5 py-4 align-top">
+                                            @if (\App\Models\Location::isOtherLocation($location->name))
+                                                <input form="{{ $updateFormId }}" type="hidden" name="office_code" value="{{ \App\Models\Office::defaultCode() }}">
+                                                <span class="text-sm font-semibold">{{ \App\Models\Office::defaultCode() }} — Default Office</span>
+                                            @else
                                             <select form="{{ $updateFormId }}" name="office_code" required class="config-control">
                                                 @foreach ($offices as $code => $office)
                                                     <option value="{{ $code }}" @selected($location->office_code === $code)>{{ $code }} - {{ $office }}</option>
                                                 @endforeach
                                             </select>
+                                            @endif
                                         </td>
                                         <td class="px-5 py-4 align-top">
                                             <div class="flex flex-wrap justify-end gap-2">

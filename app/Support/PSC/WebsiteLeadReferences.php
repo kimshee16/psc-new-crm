@@ -2,8 +2,10 @@
 
 namespace App\Support\PSC;
 
+use App\Models\Country;
 use App\Models\EducationLevel;
 use App\Models\Location;
+use App\Models\Office;
 use Illuminate\Support\Facades\DB;
 
 class WebsiteLeadReferences
@@ -12,6 +14,16 @@ class WebsiteLeadReferences
      * @return list<string>
      */
     public static function countries(): array
+    {
+        return Country::names();
+    }
+
+    /**
+     * Original CRM country names, retained for initial database setup.
+     *
+     * @return list<string>
+     */
+    public static function defaultCountries(): array
     {
         return [
             'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua & Deps', 'Argentina', 'Armenia',
@@ -272,20 +284,7 @@ class WebsiteLeadReferences
      */
     public static function offices(): array
     {
-        return [
-            'MEL' => 'Melbourne',
-            'SYD' => 'Sydney',
-            'BNE' => 'Brisbane',
-            'PER' => 'Perth',
-            'ADL' => 'Adelaide',
-            'JKT' => 'Jakarta',
-            'MDN' => 'Medan',
-            'DPS' => 'Bali',
-            'MNL' => 'Manila',
-            'MANILA' => 'Manila',
-            'PHIL-OFFSHORE' => 'Philippines Offshore',
-            'LATAM' => 'LATAM',
-        ];
+        return Office::options();
     }
 
     /**
@@ -359,12 +358,16 @@ class WebsiteLeadReferences
 
     public function officeCodeForLocation(string $location): string
     {
+        if (Location::isOtherLocation($location)) {
+            return Office::defaultCode();
+        }
+
         $configured = Location::query()
             ->where('active', true)
             ->where('name', $location)
             ->value('office_code');
 
-        if (is_string($configured) && $configured !== '') {
+        if (is_string($configured) && Office::query()->where('code', strtoupper($configured))->exists()) {
             return strtoupper($configured);
         }
 
@@ -374,7 +377,7 @@ class WebsiteLeadReferences
             }
         }
 
-        return 'MEL';
+        return Office::defaultCode();
     }
 
     public function officeCodeForLead(string $nationality, string $currentLocation): string
@@ -398,7 +401,7 @@ class WebsiteLeadReferences
             ->orderBy('id')
             ->value('office_code');
 
-        if (is_string($configured) && trim($configured) !== '') {
+        if (is_string($configured) && Office::query()->where('code', strtoupper(trim($configured)))->exists()) {
             return strtoupper(trim($configured));
         }
 

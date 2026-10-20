@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\PSC\WebsiteLeadReferences;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -12,16 +13,7 @@ class MyOfficesController extends Controller
     /**
      * @var array<string, string>
      */
-    private array $offices = [
-        'MEL' => 'Melbourne',
-        'SYD' => 'Sydney',
-        'BNE' => 'Brisbane',
-        'PER' => 'Perth',
-        'ADL' => 'Adelaide',
-        'MANILA' => 'Manila',
-        'PHIL-OFFSHORE' => 'Philippines Offshore',
-        'LATAM' => 'LATAM',
-    ];
+    private array $offices;
 
     public function index(Request $request): RedirectResponse
     {
@@ -59,6 +51,7 @@ class MyOfficesController extends Controller
     {
         $user = $request->user();
         $this->authorizeAccess($user);
+        $this->offices = WebsiteLeadReferences::offices();
 
         $availableOffices = $this->availableOfficesFor($user);
         $selectedOfficeCodes = $this->selectedOfficeCodes($request, array_keys($availableOffices));
@@ -91,7 +84,7 @@ class MyOfficesController extends Controller
      */
     private function availableOfficesFor(User $user): array
     {
-        $assigned = array_intersect_key($this->offices, array_flip($user->assignedOfficeCodes()));
+        $assigned = array_intersect_key($this->offices, array_flip($user->accessibleOfficeCodes()));
 
         if ($assigned !== []) {
             return $assigned;

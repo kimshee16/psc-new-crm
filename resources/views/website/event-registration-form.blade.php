@@ -107,7 +107,7 @@
                     <div>
                         <h1 class="psc-event-heading">Registration - {{ $event->name }}</h1>
                         <div class="psc-event-details">
-                            <p><strong>Date and time:</strong> {{ $event->starts_at->format('l, j F Y g:i A') }}</p>
+                            <p><strong>Date and time:</strong> {{ $event->starts_at->format('l, j F Y g:i A') }} {{ config('app.timezone') }}</p>
                             <p><strong>Location:</strong> {{ $event->location }}</p>
                             <p>Fill in your details to register for this free event.</p>
                         </div>

@@ -65,4 +65,9 @@ class Lead extends Model
     {
         return $this->belongsTo(User::class, 'assigned_user_id');
     }
+
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(PscEvent::class, 'psc_event_id');
+    }
 }

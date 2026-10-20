@@ -6,7 +6,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
-use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
 class AuthController extends Controller
@@ -29,6 +28,14 @@ class AuthController extends Controller
             return back()
                 ->withErrors(['email' => 'The provided credentials do not match our records.'])
                 ->onlyInput('email');
+        }
+
+        if (! $request->user()->hasPortalAccess()) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors(['email' => 'Your account access is restricted. Contact your administrator.'])->onlyInput('email');
         }
 
         $request->session()->regenerate();

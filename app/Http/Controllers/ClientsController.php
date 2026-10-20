@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
+use App\Models\Country;
 use App\Models\Lead;
+use App\Models\Office;
 use App\Models\User;
 use App\Support\PSC\WebsiteLeadReferences;
 use Illuminate\Http\RedirectResponse;
@@ -18,6 +20,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class ClientsController extends Controller
 {
     private const PER_PAGE_OPTIONS = [10, 20, 50];
+
     private const EDIT_LOCK_MINUTES = 15;
 
     /**
@@ -95,7 +98,7 @@ class ClientsController extends Controller
             'phone_country_code' => ['required', 'string', Rule::in(array_keys(WebsiteLeadReferences::phoneCountryCodes()))],
             'phone_number' => ['required', 'string', 'max:40', 'regex:/^[0-9 ()-]{6,24}$/'],
             'email' => ['required', 'email', 'max:120'],
-            'nationality' => ['required', 'string', 'max:80'],
+            'nationality' => ['required', 'string', 'max:80', Rule::in($this->nationalities())],
             'current_location' => ['required', 'string', 'max:120'],
             'street' => ['nullable', 'string', 'max:160'],
             'suburb' => ['nullable', 'string', 'max:120'],
@@ -171,7 +174,7 @@ class ClientsController extends Controller
         return view('crm.clients.show', [
             'title' => 'PSC CRM - '.$clientName,
             'client' => $client,
-            'nationalities' => $this->nationalities(),
+            'nationalities' => $this->nationalities($client['nationality']),
             'currentLocations' => $this->locations(),
             'states' => $this->states(),
             'offices' => $this->offices(),
@@ -212,9 +215,9 @@ class ClientsController extends Controller
                 ->with('warning', 'This client record is locked for editing. Try again after the current edit session ends.');
         }
 
-        $validated = $request->validate($this->clientRecordRules(), [], $this->clientRecordAttributes());
         $user = $request->user();
         $existing = $this->clientListRecordFor($clientId, $user);
+        $validated = $request->validate($this->clientRecordRules($existing['nationality'] ?? null), [], $this->clientRecordAttributes());
         $existingPhotoPath = (string) ($existing['passport_photo_path'] ?? '');
         $passportPhotoPath = $this->passportPhotoPathFrom($request, $existingPhotoPath);
 
@@ -468,9 +471,9 @@ class ClientsController extends Controller
     /**
      * @return list<string>
      */
-    private function nationalities(): array
+    private function nationalities(?string $current = null): array
     {
-        return ['Australian', 'Brazilian', 'Chinese', 'Indian', 'Indonesian', 'Nepalese', 'Philippine'];
+        return Country::clientNationalities($current);
     }
 
     /**
@@ -494,7 +497,7 @@ class ClientsController extends Controller
      */
     private function offices(): array
     {
-        return ['Melbourne', 'Sydney', 'Brisbane', 'Perth', 'Adelaide', 'Manila', 'Philippines Offshore', 'LATAM'];
+        return array_values(array_unique(WebsiteLeadReferences::offices()));
     }
 
     /**
@@ -740,7 +743,7 @@ class ClientsController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $validated
+     * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
      */
     private function storedClientAttributesFrom(array $validated, User $user, int $clientId): array
@@ -780,8 +783,8 @@ class ClientsController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $validated
-     * @param array<string, mixed>|null $existing
+     * @param  array<string, mixed>  $validated
+     * @param  array<string, mixed>|null  $existing
      * @return array<string, mixed>
      */
     private function updatedClientAttributesFrom(array $validated, User $user, int $clientId, ?array $existing, ?string $passportPhotoPath): array
@@ -930,7 +933,7 @@ class ClientsController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $sourceClient
+     * @param  array<string, mixed>  $sourceClient
      */
     private function storedClientForLead(array $sourceClient, User $user): Client
     {
@@ -968,10 +971,8 @@ class ClientsController extends Controller
 
     private function leadOfficeCodeFor(Client $client, User $user): string
     {
-        $officeCodes = $user->assignedOfficeCodes();
-
-        if ($officeCodes !== []) {
-            return $officeCodes[0];
+        if ($user->defaultOfficeCode() !== null) {
+            return $user->defaultOfficeCode();
         }
 
         return $this->officeCodeForName((string) $client->admin_office);
@@ -985,11 +986,11 @@ class ClientsController extends Controller
             }
         }
 
-        return 'MEL';
+        return Office::defaultCode();
     }
 
     /**
-     * @param array<string, mixed> $client
+     * @param  array<string, mixed>  $client
      * @return array<string, mixed>
      */
     private function clientWithPhoneParts(array $client): array
@@ -1044,25 +1045,16 @@ class ClientsController extends Controller
 
     private function currentOfficeFor(User $user): string
     {
-        $officeNames = [
-            'MEL' => 'Melbourne',
-            'SYD' => 'Sydney',
-            'BNE' => 'Brisbane',
-            'PER' => 'Perth',
-            'ADL' => 'Adelaide',
-            'MANILA' => 'Manila',
-            'PHIL-OFFSHORE' => 'Philippines Offshore',
-            'LATAM' => 'LATAM',
-        ];
-        $officeCode = $user->assignedOfficeCodes()[0] ?? 'MEL';
+        $officeNames = WebsiteLeadReferences::offices();
+        $officeCode = $user->defaultOfficeCode() ?? Office::defaultCode();
 
-        return $officeNames[$officeCode] ?? 'Melbourne';
+        return $officeNames[$officeCode] ?? $officeNames[Office::defaultCode()];
     }
 
     /**
      * @return array<string, list<mixed>>
      */
-    private function clientRecordRules(): array
+    private function clientRecordRules(?string $currentNationality = null): array
     {
         return [
             'first_name' => ['required', 'string', 'max:80'],
@@ -1072,7 +1064,7 @@ class ClientsController extends Controller
             'phone_country_code' => ['required', 'string', Rule::in(array_keys(WebsiteLeadReferences::phoneCountryCodes()))],
             'phone_number' => ['required', 'string', 'max:40', 'regex:/^[0-9 ()-]{6,24}$/'],
             'email' => ['required', 'email', 'max:120'],
-            'nationality' => ['required', 'string', Rule::in($this->nationalities())],
+            'nationality' => ['required', 'string', Rule::in($this->nationalities($currentNationality))],
             'current_location' => ['required', 'string', Rule::in($this->locations())],
             'street' => ['nullable', 'string', 'max:160'],
             'suburb' => ['nullable', 'string', 'max:120'],
@@ -1210,7 +1202,7 @@ class ClientsController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $input
+     * @param  array<string, mixed>  $input
      * @return array<string, mixed>|null
      */
     private function duplicateClientFor(array $input, User $user): ?array
@@ -1259,7 +1251,7 @@ class ClientsController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $client
+     * @param  array<string, mixed>  $client
      */
     private function displayName(array $client): string
     {
@@ -1320,7 +1312,7 @@ class ClientsController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $input
+     * @param  array<string, mixed>  $input
      */
     private function notesToStorage(array $input, User $user): string
     {
@@ -1364,7 +1356,7 @@ class ClientsController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $client
+     * @param  array<string, mixed>  $client
      */
     private function canManageClientNotes(User $user, array $client): bool
     {

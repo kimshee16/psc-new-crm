@@ -246,12 +246,15 @@
                     </div>
                     <div id="lead-event-field" class="lead-field">
                         <label for="lead-event" class="lead-label">Event</label>
-                        <select id="lead-event" name="event_name" class="lead-control @error('event_name') is-invalid @enderror">
-                            <option value=""></option>
+                        <select id="lead-event" name="psc_event_id" class="lead-control @error('psc_event_id') is-invalid @enderror">
+                            <option value="">{{ ! $lead['psc_event_id'] && $lead['event_name'] ? 'Keep recorded event: '.$lead['event_name'] : 'Select event' }}</option>
                             @foreach ($eventOptions as $event)
-                                <option value="{{ $event }}" @selected(old('event_name', $lead['event_name']) === $event)>{{ $event }}</option>
+                                <option value="{{ $event->id }}" @selected((string) old('psc_event_id', $lead['psc_event_id']) === (string) $event->id)>#{{ $event->id }} — {{ $event->name }} — {{ $event->starts_at->format('d M Y') }}{{ $event->active ? '' : ' (Inactive)' }}</option>
                             @endforeach
                         </select>
+                        @if ($lead['event_name'])
+                            <p class="mt-1 text-xs text-slate-500">Recorded event: {{ $lead['event_name'] }}</p>
+                        @endif
                     </div>
                     <div class="lead-field">
                         <label for="lead-highest-education" class="lead-label">Highest Ed</label>

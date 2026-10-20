@@ -3,15 +3,13 @@
 namespace App\Support\PSC;
 
 use App\Models\Lead;
+use App\Models\Office;
 use App\Models\User;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class LeadAssignmentService
 {
-    public function __construct(private readonly WebsiteLeadReferences $references)
-    {
-    }
+    public function __construct(private readonly WebsiteLeadReferences $references) {}
 
     /**
      * @return array{user: User|null, name: string, office_code: string, office: string, reason: string}
@@ -21,7 +19,10 @@ class LeadAssignmentService
         $redirectedOfficeCode = $this->references->officeCodeForRedirection($nationality, $currentLocation);
         $officeCode = $redirectedOfficeCode ?? $this->references->officeCodeForLocation($currentLocation);
         $offices = WebsiteLeadReferences::offices();
-        $office = $offices[$officeCode] ?? $offices['MEL'];
+        if (! isset($offices[$officeCode])) {
+            $officeCode = Office::defaultCode();
+        }
+        $office = $offices[$officeCode];
         $user = $this->nextRoundRobinUserForOffice($officeCode);
         $routeSource = $redirectedOfficeCode !== null
             ? "Nationality {$nationality} and current location {$currentLocation} redirected to {$office}"
@@ -50,6 +51,7 @@ class LeadAssignmentService
     {
         /** @var Collection<int, User> $users */
         $users = User::query()
+            ->whereDoesntHave('staffLeaves', fn ($query) => $query->onDate(now()->toDateString()))
             ->orderBy('id')
             ->get()
             ->filter(fn (User $user): bool => $this->isEligibleForOffice($user, $officeCode))
@@ -83,20 +85,8 @@ class LeadAssignmentService
     private function isEligibleForOffice(User $user, string $officeCode): bool
     {
         return $user->include_in_round_robin
-            && $user->defaultOfficeCode() === $officeCode
-            && ! $this->isOnLeave($user);
-    }
-
-    private function isOnLeave(User $user): bool
-    {
-        $today = now()->toDateString();
-
-        return DB::table('staff_leaves')
-            ->where('user_id', $user->getKey())
-            ->where('active', true)
-            ->whereDate('starts_on', '<=', $today)
-            ->whereDate('ends_on', '>=', $today)
-            ->exists();
+            && $user->hasPortalAccess()
+            && $user->defaultOfficeCode() === $officeCode;
     }
 
     private function assigneeName(User $user): string

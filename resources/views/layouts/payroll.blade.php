@@ -2,7 +2,7 @@
     $activeRoute = Route::currentRouteName();
     $user = auth()->user();
     $showMyOffices = $user?->canAccessMyOffices() ?? false;
-    $headerOffice = ($user?->assignedOfficeCodes()[0] ?? 'MEL').' Office';
+    $headerOffice = ($user?->defaultOfficeCode() ?? \App\Models\Office::defaultCode()).' Office';
     $headerAccountType = $user?->account_type ?? 'Counsellor';
     $navItems = [
         ['route' => 'home', 'label' => 'Home', 'icon' => 'home'],
@@ -24,6 +24,7 @@
             ],
         ]] : []),
         ['route' => 'reports', 'label' => 'Reports', 'icon' => 'reports'],
+        ['route' => 'holidays', 'label' => 'Holidays', 'icon' => 'calendar', 'activeRoutes' => ['holidays', 'holidays.create', 'holidays.edit']],
         ['route' => 'configuration', 'label' => 'Configuration', 'icon' => 'settings', 'activeRoutes' => ['configuration', 'configuration.locations.store', 'configuration.locations.update', 'configuration.locations.destroy', 'configuration.education-levels.store', 'configuration.education-levels.update', 'configuration.education-levels.destroy']],
     ];
 @endphp

@@ -10,7 +10,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -31,9 +33,7 @@ class LeadsController extends Controller
         'days_in_queue',
     ];
 
-    public function __construct(private readonly WebsiteLeadReferences $references)
-    {
-    }
+    public function __construct(private readonly WebsiteLeadReferences $references) {}
 
     public function index(Request $request): View
     {
@@ -111,12 +111,12 @@ class LeadsController extends Controller
             ->with('client')
             ->where('lead_id', $leadId)
             ->firstOrFail();
-        $validated = $request->validate($this->leadRecordRules(), [], $this->leadRecordAttributes());
+        $validated = $request->validate($this->leadRecordRules($lead), [], $this->leadRecordAttributes());
         $assignedUser = $this->userForName((string) $validated['assigned_name']);
-        $officeCode = $assignedUser?->assignedOfficeCodes()[0] ?? $lead->assigned_office_code;
+        $officeCode = $assignedUser?->defaultOfficeCode() ?? $lead->assigned_office_code;
         $offices = WebsiteLeadReferences::offices();
         $source = (string) $validated['source'];
-        $eventName = $source === 'Event' ? (string) ($validated['event_name'] ?? '') : '';
+        [$eventId, $eventName] = $this->eventForUpdate($request, $lead, $validated);
 
         $lead->fill([
             'assigned_user_id' => $assignedUser?->getKey() ?? $lead->assigned_user_id,
@@ -128,6 +128,7 @@ class LeadsController extends Controller
             'priority' => (string) $validated['priority'],
             'critical_date' => $validated['critical_date'] ?? null,
             'source' => $source,
+            'psc_event_id' => $eventId,
             'event_name' => $eventName,
             'highest_education_level' => (string) ($validated['highest_education_level'] ?? ''),
             'secondary_counsellor' => (string) ($validated['secondary_counsellor'] ?? ''),
@@ -190,6 +191,7 @@ class LeadsController extends Controller
             'priority' => $this->displayPriority((string) ($lead->priority ?? 'medium')),
             'critical_date' => $lead->critical_date?->format('Y-m-d') ?? '',
             'source' => $lead->source,
+            'psc_event_id' => $lead->psc_event_id,
             'event_name' => $lead->event_name ?? '',
             'highest_education_level' => $lead->highest_education_level ?? '',
             'assigned_name' => $lead->assigned_name,
@@ -239,7 +241,7 @@ class LeadsController extends Controller
     }
 
     /**
-     * @param list<array<string, mixed>> $rows
+     * @param  list<array<string, mixed>>  $rows
      * @return list<array<string, mixed>>
      */
     private function leadRowsForView(array $rows, bool $canViewAdminColumns): array
@@ -280,8 +282,8 @@ class LeadsController extends Controller
     }
 
     /**
-     * @param \Illuminate\Support\Collection<string, int> $duplicateEmails
-     * @param \Illuminate\Support\Collection<string, int> $duplicateNames
+     * @param  Collection<string, int>  $duplicateEmails
+     * @param  Collection<string, int>  $duplicateNames
      * @return array<string, mixed>
      */
     private function leadRow(Lead $lead, $duplicateEmails, $duplicateNames): array
@@ -319,7 +321,7 @@ class LeadsController extends Controller
     private function visibleLeadQuery(User $user): Builder
     {
         $query = Lead::query();
-        $officeCodes = $user->assignedOfficeCodes();
+        $officeCodes = $user->accessibleOfficeCodes();
 
         if ($this->canViewAllLeadOffices($user)) {
             if ($officeCodes !== []) {
@@ -341,7 +343,7 @@ class LeadsController extends Controller
     /**
      * @return array<string, list<mixed>>
      */
-    private function leadRecordRules(): array
+    private function leadRecordRules(Lead $lead): array
     {
         return [
             'prospective_service' => ['required', 'string', 'max:80', Rule::in($this->prospectiveServices())],
@@ -350,6 +352,10 @@ class LeadsController extends Controller
             'critical_date' => ['nullable', 'date'],
             'source' => ['required', 'string', 'max:80', Rule::in($this->sources())],
             'event_name' => ['nullable', 'string', 'max:160'],
+            'psc_event_id' => ['exclude_unless:source,Event', 'nullable', 'integer',
+                Rule::exists('psc_events', 'id')->where(fn ($query) => $query->where(
+                    fn ($events) => $events->where('active', true)->orWhere('id', $lead->psc_event_id)
+                ))],
             'highest_education_level' => ['nullable', 'string', Rule::in($this->references->educationLevelNames())],
             'assigned_name' => ['required', 'string', 'max:120'],
             'secondary_counsellor' => ['nullable', 'string', 'max:120'],
@@ -367,6 +373,7 @@ class LeadsController extends Controller
             'prospective_service' => 'prospective service',
             'critical_date' => 'critical date',
             'event_name' => 'event',
+            'psc_event_id' => 'event',
             'highest_education_level' => 'highest education level',
             'assigned_name' => 'counsellor',
             'secondary_counsellor' => 'secondary counsellor',
@@ -405,21 +412,48 @@ class LeadsController extends Controller
         ], fn ($name): bool => is_string($name) && trim($name) !== '')));
     }
 
-    /**
-     * @return list<string>
-     */
-    private function eventOptions(Lead $lead): array
+    private function eventOptions(Lead $lead): Collection
     {
-        $events = PscEvent::query()
-            ->where('active', true)
+        return PscEvent::query()
+            ->where(fn ($query) => $query->where('active', true)->orWhere('id', $lead->psc_event_id))
             ->orderBy('starts_at')
-            ->pluck('name')
-            ->all();
+            ->orderBy('id')
+            ->get();
+    }
 
-        return array_values(array_unique(array_filter([
-            $lead->event_name,
-            ...array_map('strval', $events),
-        ], fn ($name): bool => is_string($name) && trim($name) !== '')));
+    /** @return array{int|null, string} */
+    private function eventForUpdate(Request $request, Lead $lead, array $validated): array
+    {
+        if ($validated['source'] !== 'Event') {
+            return [null, ''];
+        }
+
+        if ($request->exists('psc_event_id')) {
+            if (! empty($validated['psc_event_id'])) {
+                $event = PscEvent::findOrFail($validated['psc_event_id']);
+
+                return [(int) $event->id, (int) $lead->psc_event_id === (int) $event->id
+                    ? ($lead->event_name ?: $event->name) : $event->name];
+            }
+
+            // Keep an existing name-only record until a configured event replaces it.
+            return [null, $lead->psc_event_id === null ? ($lead->event_name ?? '') : ''];
+        }
+
+        // Support older forms without guessing when event names are ambiguous.
+        $name = (string) ($validated['event_name'] ?? '');
+        if ($name === '') {
+            return [null, ''];
+        }
+        if ($name === $lead->event_name) {
+            return [$lead->psc_event_id, $name];
+        }
+        $matches = PscEvent::where('active', true)->where('name', $name)->get();
+        if ($matches->count() !== 1) {
+            throw ValidationException::withMessages(['event_name' => 'Select a configured event by its ID.']);
+        }
+
+        return [(int) $matches->first()->id, $matches->first()->name];
     }
 
     private function canViewAllLeadOffices(User $user): bool
@@ -440,13 +474,13 @@ class LeadsController extends Controller
         $offices = WebsiteLeadReferences::offices();
 
         if ($this->canViewAllLeadOffices($user)) {
-            $codes = $user->assignedOfficeCodes();
+            $codes = $user->accessibleOfficeCodes();
 
             return $codes === [] ? $offices : array_intersect_key($offices, array_flip($codes));
         }
 
         if (in_array($user->account_type, [User::ACCOUNT_TYPE_MANAGER, User::ACCOUNT_TYPE_REGIONAL_MANAGER], true)) {
-            return array_intersect_key($offices, array_flip($user->assignedOfficeCodes()));
+            return array_intersect_key($offices, array_flip($user->accessibleOfficeCodes()));
         }
 
         return [];
@@ -491,7 +525,7 @@ class LeadsController extends Controller
     }
 
     /**
-     * @param array<string, string> $availableOffices
+     * @param  array<string, string>  $availableOffices
      */
     private function selectedOffice(Request $request, array $availableOffices): string
     {

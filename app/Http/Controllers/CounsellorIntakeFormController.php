@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\Lead;
+use App\Models\Office;
 use App\Models\User;
 use App\Support\PSC\WebsiteLeadReferences;
 use Illuminate\Http\RedirectResponse;
@@ -16,9 +17,7 @@ use Illuminate\View\View;
 
 class CounsellorIntakeFormController extends Controller
 {
-    public function __construct(private readonly WebsiteLeadReferences $references)
-    {
-    }
+    public function __construct(private readonly WebsiteLeadReferences $references) {}
 
     public function show(User $counsellor): View
     {
@@ -127,7 +126,7 @@ class CounsellorIntakeFormController extends Controller
      */
     private function assignmentFor(User $counsellor): array
     {
-        $officeCode = $counsellor->assignedOfficeCodes()[0] ?? 'MEL';
+        $officeCode = $counsellor->defaultOfficeCode() ?? Office::defaultCode();
         $offices = WebsiteLeadReferences::offices();
 
         return [
@@ -139,8 +138,8 @@ class CounsellorIntakeFormController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $validated
-     * @param array{user: User, name: string, office_code: string, office: string} $assignment
+     * @param  array<string, mixed>  $validated
+     * @param  array{user: User, name: string, office_code: string, office: string}  $assignment
      */
     private function clientForSubmission(array $validated, string $phoneNumber, string $mobile, array $assignment): Client
     {
@@ -195,7 +194,7 @@ class CounsellorIntakeFormController extends Controller
     }
 
     /**
-     * @param array<string, mixed> $validated
+     * @param  array<string, mixed>  $validated
      */
     private function clientMatchingSubmission(array $validated): ?Client
     {
