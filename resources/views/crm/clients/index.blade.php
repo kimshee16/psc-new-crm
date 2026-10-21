@@ -27,7 +27,7 @@
             <div id="clients-count">Showing 0 clients</div>
         </div>
 
-        <div class="overflow-x-auto">
+        <div class="relative overflow-x-auto">
             <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-[11px] uppercase tracking-[0.08em] text-slate-500">
                     <tr class="align-top">

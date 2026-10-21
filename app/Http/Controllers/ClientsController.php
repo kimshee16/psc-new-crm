@@ -189,6 +189,20 @@ class ClientsController extends Controller
         ]);
     }
 
+    public function passportPhoto(Request $request, string $clientId): StreamedResponse
+    {
+        $client = $this->clientProfileFor($clientId, $request->user());
+        $path = $client['passport_photo_path'];
+        $disk = Storage::disk('public');
+
+        abort_unless($path !== '' && $disk->exists($path), 404);
+
+        return $disk->response($path, null, [
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     public function edit(Request $request, string $clientId): RedirectResponse
     {
         $this->clientProfileFor($clientId, $request->user());
@@ -623,7 +637,7 @@ class ClientsController extends Controller
                 'current_visa' => $client['current_visa'] ?? '',
                 'visa_expiry' => $client['visa_expiry'] ?? '',
                 'passport_photo_path' => $client['passport_photo_path'] ?? '',
-                'passport_photo_url' => $this->passportPhotoUrlFor($client['passport_photo_path'] ?? ''),
+                'passport_photo_url' => $this->passportPhotoUrlFor($client['passport_photo_path'] ?? '', $clientId),
                 'applications' => $this->activeLeadRowsForClientId((int) $client['id']),
                 'notes' => $client['notes'] ?? [],
                 'primary_counsellor' => $client['primary_counsellor'] ?? '',
@@ -1121,9 +1135,11 @@ class ClientsController extends Controller
         return $passportPhotoPath;
     }
 
-    private function passportPhotoUrlFor(string $passportPhotoPath): string
+    private function passportPhotoUrlFor(string $passportPhotoPath, string $clientId): string
     {
-        return $passportPhotoPath !== '' ? Storage::disk('public')->url($passportPhotoPath) : '';
+        return $passportPhotoPath !== ''
+            ? route('clients.passport-photo', ['clientId' => $clientId], false)
+            : '';
     }
 
     /**

@@ -977,7 +977,10 @@ class ExampleTest extends TestCase
 
     public function test_client_passport_photo_can_be_uploaded_replaced_and_deleted_on_save(): void
     {
+        config(['filesystems.disks.public.url' => 'https://sz8.894.mytemp.website/storage']);
         Storage::fake('public');
+
+        $this->get('/clients/1001/passport-photo')->assertRedirect('/login');
 
         $user = User::factory()->create(['name' => 'Jessica Morgan']);
         $payload = [
@@ -1015,10 +1018,20 @@ class ExampleTest extends TestCase
         $this->assertStringStartsWith('client-passport-photos/', $firstPhotoPath);
         Storage::disk('public')->assertExists($firstPhotoPath);
 
-        $this->actingAs($user)
-            ->get('/clients/1001')
-            ->assertStatus(200)
-            ->assertSee('/storage/'.$firstPhotoPath, false);
+        // Photo URLs must follow the page origin, even when the disk URL uses another scheme or host.
+        foreach (['http://127.0.0.1:8001', 'http://sz8.894.mytemp.website', 'https://sz8.894.mytemp.website'] as $origin) {
+            $this->actingAs($user)
+                ->get($origin.'/clients/1001')
+                ->assertStatus(200)
+                ->assertSee('id="client-passport-photo-preview" src="/clients/1001/passport-photo"', false)
+                ->assertSee('id="client-passport-lightbox-image" src="/clients/1001/passport-photo"', false);
+        }
+
+        $this->get('/clients/1001/passport-photo')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/jpeg')
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertStreamedContent(Storage::disk('public')->get($firstPhotoPath));
 
         $this->actingAs($user)->post('/clients/1001/edit');
 
@@ -1034,6 +1047,11 @@ class ExampleTest extends TestCase
         Storage::disk('public')->assertMissing($firstPhotoPath);
         Storage::disk('public')->assertExists($replacementPhotoPath);
 
+        $this->get('/clients/1001/passport-photo')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png')
+            ->assertStreamedContent(Storage::disk('public')->get($replacementPhotoPath));
+
         $this->actingAs($user)->post('/clients/1001/edit');
 
         $this->actingAs($user)
@@ -1044,6 +1062,7 @@ class ExampleTest extends TestCase
 
         $this->assertNull(Client::where('client_id', 1001)->value('passport_photo_path'));
         Storage::disk('public')->assertMissing($replacementPhotoPath);
+        $this->get('/clients/1001/passport-photo')->assertNotFound();
     }
 
     public function test_website_contact_form_creates_client_and_lead_then_redirects(): void

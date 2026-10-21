@@ -100,14 +100,14 @@
                     </div>
                 @endauth
             </aside>
-            <main class="min-h-screen pl-[232px]">
+            <main class="ml-[232px] min-h-screen min-w-0">
                 <header class="sticky top-0 z-10 flex h-[66px] items-center justify-between border-b border-slate-200 bg-white px-7">
                     <label class="sr-only" for="global-search">Search</label>
                     <input
                         id="global-search"
                         type="search"
                         placeholder="Search client, application, lead or organisation..."
-                        class="h-10 w-full max-w-[540px] rounded-md border border-slate-300 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-500 focus:border-[#1f7890] focus:ring-2 focus:ring-[#1f7890]/15"
+                        class="h-10 min-w-0 w-full max-w-[540px] rounded-md border border-slate-300 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-500 focus:border-[#1f7890] focus:ring-2 focus:ring-[#1f7890]/15"
                     >
                     <div class="ml-6 flex shrink-0 items-center gap-3 text-right">
                         <div>
@@ -119,7 +119,7 @@
                         </div>
                     </div>
                 </header>
-                <div class="mx-auto max-w-[1500px] px-7 py-8">
+                <div class="min-w-0 w-full px-7 py-8">
                     @yield('content')
                 </div>
             </main>

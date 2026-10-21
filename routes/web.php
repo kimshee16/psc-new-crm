@@ -82,6 +82,7 @@ $registerRoutes = function () {
         Route::get('/clients/search', [ClientsController::class, 'search'])->name('clients.search');
         Route::post('/clients/{clientId}/applications', [ClientsController::class, 'createApplication'])->name('clients.applications.create');
         Route::get('/clients/{clientId}', [ClientsController::class, 'show'])->name('clients.show');
+        Route::get('/clients/{clientId}/passport-photo', [ClientsController::class, 'passportPhoto'])->name('clients.passport-photo');
         Route::post('/clients/{clientId}/edit', [ClientsController::class, 'edit'])->name('clients.edit');
         Route::patch('/clients/{clientId}', [ClientsController::class, 'update'])->name('clients.update');
         Route::post('/clients/{clientId}/discard', [ClientsController::class, 'discard'])->name('clients.discard');
