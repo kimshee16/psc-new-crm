@@ -100,7 +100,7 @@
                     </div>
                 @endauth
             </aside>
-            <main class="ml-[232px] min-h-screen min-w-0">
+            <main class="min-h-screen min-w-0 pl-[232px]">
                 <header class="sticky top-0 z-10 flex h-[66px] items-center justify-between border-b border-slate-200 bg-white px-7">
                     <label class="sr-only" for="global-search">Search</label>
                     <input
