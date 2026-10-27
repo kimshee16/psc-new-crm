@@ -11,6 +11,8 @@
         }
 
         .client-profile-card {
+            container-type: inline-size;
+            min-width: 0;
             border: 1px solid #d8dee8;
             border-radius: 4px;
             background: #fff;
@@ -37,6 +39,7 @@
 
         .client-profile-control {
             width: 100%;
+            min-width: 0;
             min-height: 28px;
             border: 1px solid #aeb7c4;
             border-radius: 3px;
@@ -77,8 +80,21 @@
 
         .client-phone-fields {
             display: grid;
-            grid-template-columns: minmax(156px, 0.58fr) minmax(112px, 1fr);
+            grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+            min-width: 0;
             gap: 8px;
+        }
+
+        @container (max-width: 460px) {
+            .client-phone-fields {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        @media (max-width: 1280px) {
+            .client-phone-fields {
+                grid-template-columns: minmax(0, 1fr);
+            }
         }
 
         .client-profile-action {
@@ -474,9 +490,9 @@
                         <label for="client-phone-number" class="client-profile-label">Mobile number<span class="client-profile-required">*</span></label>
                         @if ($isEditing)
                             <div class="client-phone-fields">
-                                <select id="client-phone-country-code" name="phone_country_code" required class="client-profile-control @error('phone_country_code') is-invalid @enderror">
+                                <select id="client-phone-country-code" name="phone_country_code" aria-label="Country calling code" required class="client-profile-control @error('phone_country_code') is-invalid @enderror">
                                     @foreach ($phoneCountryCodes as $code => $label)
-                                        <option value="{{ $code }}" @selected(old('phone_country_code', $client['phone_country_code'] ?? '+61') === $code)>{{ $label }}</option>
+                                        <option value="{{ $code }}" @selected(old('phone_country_code', $client['phone_country_code'] ?? '+61') === $code)>{{ $code }}</option>
                                     @endforeach
                                 </select>
                                 <input id="client-phone-number" name="phone_number" value="{{ old('phone_number', $client['phone_number'] ?? '') }}" type="text" required inputmode="tel" maxlength="40" pattern="[0-9 ()-]{6,24}" placeholder="412 345 678" class="client-profile-control @error('phone_number') is-invalid @enderror">
@@ -733,36 +749,7 @@
         </section>
     </form>
 
-    <div id="client-create-application-modal" class="client-profile-modal" aria-hidden="true">
-        <div role="dialog" aria-modal="true" aria-labelledby="client-create-application-title" class="client-create-application-dialog">
-            <div class="flex items-start justify-between gap-4">
-                <h2 id="client-create-application-title" class="text-lg font-extrabold text-[#101820]">Create Application</h2>
-                <button id="client-create-application-close" type="button" title="Close dialog" class="text-slate-500 transition hover:text-slate-900">
-                    <span aria-hidden="true" class="text-2xl leading-none">&times;</span>
-                    <span class="sr-only">Close dialog</span>
-                </button>
-            </div>
-            <form method="POST" action="{{ route('clients.applications.create', $client['client_id']) }}" class="mt-4 space-y-4">
-                @csrf
-                <label class="block text-sm font-bold text-slate-700">
-                    Service
-                    <select name="prospective_service" required class="client-profile-control mt-2 @error('prospective_service') is-invalid @enderror">
-                        @foreach ($prospectiveServices as $service)
-                            <option value="{{ $service }}" @selected(old('prospective_service') === $service)>{{ $service }}</option>
-                        @endforeach
-                    </select>
-                </label>
-                <label class="flex items-start gap-3 text-sm font-bold text-slate-700">
-                    <input name="create_lead" value="1" type="checkbox" required class="mt-1 h-4 w-4 rounded border-slate-300 text-[#1f7890] focus:ring-[#1f7890]">
-                    <span>Lead</span>
-                </label>
-                <div class="flex flex-wrap justify-end gap-2 pt-1">
-                    <button id="client-create-application-cancel" type="button" class="client-profile-action client-profile-secondary">Cancel</button>
-                    <button type="submit" class="client-profile-action client-profile-primary">Create</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    <x-applications.create-modal :action="route('clients.applications.create', $client['client_id'])" trigger="client-create-application-open" :configuration="$applicationCreation" />
 
     @if ($isEditing)
         <div id="client-discard-modal" class="client-profile-modal" aria-hidden="true">
@@ -805,10 +792,6 @@
             const discardButton = document.getElementById('client-profile-discard');
             const modal = document.getElementById('client-discard-modal');
             const confirmDiscard = document.getElementById('client-confirm-discard');
-            const createApplicationModal = document.getElementById('client-create-application-modal');
-            const createApplicationOpen = document.getElementById('client-create-application-open');
-            const createApplicationClose = document.getElementById('client-create-application-close');
-            const createApplicationCancel = document.getElementById('client-create-application-cancel');
             const dob = document.getElementById('client-dob');
             const age = document.getElementById('client-age');
             const addNote = document.getElementById('client-add-note');
@@ -921,16 +904,6 @@
                 modal?.setAttribute('aria-hidden', 'true');
                 discardButton?.focus();
             };
-            const setCreateApplicationModalOpen = (isOpen) => {
-                createApplicationModal?.classList.toggle('is-open', isOpen);
-                createApplicationModal?.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
-
-                if (isOpen) {
-                    createApplicationModal?.querySelector('select')?.focus();
-                } else {
-                    createApplicationOpen?.focus();
-                }
-            };
             const calculateAge = () => {
                 if (! dob?.value) {
                     age.textContent = 'Calculated';
@@ -960,9 +933,6 @@
             discardButton?.addEventListener('click', openModal);
             document.getElementById('client-discard-close')?.addEventListener('click', closeModal);
             document.getElementById('client-keep-editing')?.addEventListener('click', closeModal);
-            createApplicationOpen?.addEventListener('click', () => setCreateApplicationModalOpen(true));
-            createApplicationClose?.addEventListener('click', () => setCreateApplicationModalOpen(false));
-            createApplicationCancel?.addEventListener('click', () => setCreateApplicationModalOpen(false));
             confirmDiscard?.addEventListener('click', () => {
                 isLeavingByAction = true;
                 discardForm.submit();
@@ -970,12 +940,8 @@
             modal?.addEventListener('click', (event) => {
                 if (event.target === modal) closeModal();
             });
-            createApplicationModal?.addEventListener('click', (event) => {
-                if (event.target === createApplicationModal) setCreateApplicationModalOpen(false);
-            });
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape' && modal?.classList.contains('is-open')) closeModal();
-                if (event.key === 'Escape' && createApplicationModal?.classList.contains('is-open')) setCreateApplicationModalOpen(false);
                 if (event.key === 'Escape' && passportLightbox?.classList.contains('is-open')) closePassportLightbox();
             });
             photoPreviewButton?.addEventListener('click', openPassportLightbox);

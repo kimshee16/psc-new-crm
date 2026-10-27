@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Client;
 use App\Models\Country;
+use App\Models\EventReferral;
 use App\Models\LeadRedirection;
 use App\Models\PscEvent;
 use App\Models\User;
@@ -90,7 +91,11 @@ class CountryConfigurationTest extends TestCase
         $urls = ['/contact', '/book-a-free-consultation', '/intake/'.$admin->id, '/events/'.$event->id.'/register'];
         foreach ($urls as $index => $url) {
             $this->get($url)->assertOk()->assertViewHas('countries', fn ($countries) => in_array('Test Country', $countries, true));
-            $this->withSession(['psc.website_forms.captcha' => 'ABC123'])->post($url, $this->leadPayload('new'.$index.'@example.test'))
+            $payload = $this->leadPayload('new'.$index.'@example.test');
+            if ($url === '/events/'.$event->id.'/register') {
+                $payload['event_referral_id'] = EventReferral::create(['name' => 'Social media', 'active' => true])->id;
+            }
+            $this->withSession(['psc.website_forms.captcha' => 'ABC123'])->post($url, $payload)
                 ->assertSessionHasNoErrors()->assertRedirect();
             $this->assertDatabaseHas('leads', ['email' => 'new'.$index.'@example.test', 'nationality' => 'Test Country']);
         }

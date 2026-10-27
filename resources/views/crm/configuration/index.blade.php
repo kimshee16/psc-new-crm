@@ -5,6 +5,12 @@
         $activeConfigurationTab = $activeConfigurationTab ?? 'locations';
         $configurationTabs = [
             [
+                'id' => 'event-marketing',
+                'label' => 'Event Referral',
+                'description' => 'Referral options used by event registration forms.',
+                'count' => $eventReferrals->count(),
+            ],
+            [
                 'id' => 'events',
                 'label' => 'PSC Events',
                 'description' => 'Event details and registration links. Requirements WIP.',
@@ -173,7 +179,9 @@
         </aside>
 
         <div>
-            @if ($activeConfigurationTab === 'events')
+            @if ($activeConfigurationTab === 'event-marketing')
+                @include('crm.configuration.event-marketing')
+            @elseif ($activeConfigurationTab === 'events')
                 @include('crm.configuration.events')
             @elseif ($activeConfigurationTab === 'countries')
                 @include('crm.configuration.countries')

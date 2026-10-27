@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Client;
 use App\Models\EducationLevel;
+use App\Models\EventReferral;
 use App\Models\Lead;
 use App\Models\Location;
 use App\Models\PscEvent;
@@ -408,6 +409,72 @@ class ExampleTest extends TestCase
         $this->assertStringContainsString('"Daniel Park","To be contacted",high,"Priya Raman",Sydney', $csv);
         $this->assertStringNotContainsString('2201,Ana', $csv);
         $this->assertLessThan(strpos($csv, 'Daniel Park'), strpos($csv, 'Kim Ramirez'));
+    }
+
+    public function test_lead_multiselect_filters_combine_choices_and_export_the_same_matches(): void
+    {
+        $admin = User::factory()->create(['account_type' => User::ACCOUNT_TYPE_ADMIN, 'offices' => []]);
+        foreach ([
+            ['Alpha', 'Contacted', 'high', 'MEL', 'Melbourne'],
+            ['Bravo', 'Consulting', 'medium', 'SYD', 'Sydney'],
+            ['Charlie', 'Converted', 'high', 'MEL', 'Melbourne'],
+            ['Delta', 'Contacted', 'low', 'SYD', 'Sydney'],
+            ['Echo', 'Consulting', 'high', 'JKT', 'Jakarta'],
+        ] as $index => [$name, $status, $priority, $code, $office]) {
+            $this->createLeadForList($admin, [
+                'client_id' => 3000 + $index, 'lead_id' => 4000 + $index, 'first_name' => $name,
+                'status' => $status, 'priority' => $priority, 'assigned_office_code' => $code, 'assigned_office' => $office,
+            ]);
+        }
+        $query = http_build_query([
+            'status' => ['Contacted', 'Consulting'], 'priority' => ['high', 'medium'],
+            'office' => ['MEL', 'SYD'], 'sort' => 'client_full_name', 'direction' => 'desc',
+            'per_page' => 10, 'page' => 2,
+        ]);
+        $this->actingAs($admin)->get('/leads?'.$query)->assertOk()
+            ->assertViewHas('selectedStatus', ['Contacted', 'Consulting'])
+            ->assertViewHas('selectedPriority', ['high', 'medium'])
+            ->assertViewHas('selectedOffice', ['MEL', 'SYD']);
+        $csv = $this->get('/leads/export?'.$query)->assertOk()->streamedContent();
+        $this->assertStringContainsString('Alpha Person', $csv);
+        $this->assertStringContainsString('Bravo Person', $csv);
+        foreach (['Charlie', 'Delta', 'Echo'] as $excluded) {
+            $this->assertStringNotContainsString($excluded, $csv);
+        }
+        $this->assertLessThan(strpos($csv, 'Alpha'), strpos($csv, 'Bravo'));
+    }
+
+    public function test_lead_multiselect_filters_normalise_values_and_accept_legacy_links(): void
+    {
+        $this->actingAs(User::factory()->create(['account_type' => User::ACCOUNT_TYPE_ADMIN, 'offices' => ['MEL']]));
+        $this->get('/leads?'.http_build_query([
+            'status' => ['Contacted', 'Contacted', 'invalid', ['nested']],
+            'priority' => ['HIGH', 'medium', 'invalid'], 'office' => ['mel', 'SYD', 'invalid'],
+        ]))->assertOk()->assertViewHas('selectedStatus', ['Contacted'])
+            ->assertViewHas('selectedPriority', ['high', 'medium'])->assertViewHas('selectedOffice', ['MEL']);
+        $this->get('/leads?status=Contacted&priority=HIGH&office=mel')->assertOk()
+            ->assertViewHas('selectedStatus', ['Contacted'])->assertViewHas('selectedPriority', ['high'])
+            ->assertViewHas('selectedOffice', ['MEL']);
+        $this->get('/leads')->assertOk()->assertViewHas('selectedStatus', [])
+            ->assertViewHas('selectedPriority', [])->assertViewHas('selectedOffice', []);
+    }
+
+    public function test_lead_multiselect_filters_preserve_counsellor_visibility(): void
+    {
+        $counsellor = User::factory()->create(['account_type' => 'Counsellor', 'offices' => ['MEL']]);
+        $other = User::factory()->create(['account_type' => 'Counsellor', 'offices' => ['SYD']]);
+        $this->createLeadForList($counsellor, ['first_name' => 'Visible', 'status' => 'Contacted']);
+        $this->createLeadForList($other, [
+            'first_name' => 'Hidden', 'status' => 'Contacted', 'client_id' => 3100, 'lead_id' => 4100,
+            'assigned_office_code' => 'SYD', 'assigned_office' => 'Sydney',
+        ]);
+        $query = http_build_query(['status' => ['Contacted', 'Consulting'], 'office' => ['MEL', 'SYD']]);
+        $this->actingAs($counsellor)->get('/leads?'.$query)->assertOk()
+            ->assertViewHas('selectedOffice', [])->assertDontSee('id="leads-office"', false);
+        $csv = $this->get('/leads/export?'.$query)->assertOk()->streamedContent();
+        $this->assertStringContainsString('Visible Person', $csv);
+        $this->assertStringNotContainsString('Hidden Person', $csv);
+        $this->assertStringNotContainsString('Admin Office', $csv);
     }
 
     public function test_lead_record_can_be_viewed_and_saved(): void
@@ -1578,6 +1645,7 @@ class ExampleTest extends TestCase
     private function eventRegistrationPayload(array $overrides = []): array
     {
         return $overrides + [
+            'event_referral_id' => EventReferral::firstOrCreate(['name' => 'Social media'], ['active' => true])->id,
             'first_name' => 'Kim',
             'middle_name' => 'Yves',
             'surname' => 'Ramirez',

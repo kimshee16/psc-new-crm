@@ -22,6 +22,7 @@ class Lead extends Model
         'source',
         'psc_event_id',
         'event_name',
+        'event_discovery_channel',
         'status',
         'priority',
         'prospective_service',

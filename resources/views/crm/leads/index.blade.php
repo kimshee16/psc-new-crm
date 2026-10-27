@@ -1,6 +1,24 @@
 @extends('layouts.payroll')
 
 @section('content')
+    <style>
+        .leads-filter-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 40px; margin-top: 8px; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; color: #334155; font-size: 14px; font-weight: 500; text-transform: none; letter-spacing: normal; }
+        .leads-filter-menu { position: fixed; inset: auto; margin: 0; width: 280px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow-y: auto; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #334155; box-shadow: 0 8px 24px #0f172a26; font-size: 13px; font-weight: 400; text-transform: none; letter-spacing: normal; }
+        .leads-filter-search { width: 100%; min-width: 0; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; }
+        .leads-filter-actions, .leads-filter-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; }
+        .leads-filter-menu button { color: #1f7890; font-weight: 700; padding: 4px; cursor: pointer; }
+        .leads-filter-menu button:focus-visible, .leads-filter-trigger:focus-visible { outline: 2px solid #1f7890; outline-offset: 2px; }
+        .leads-filter-options { max-height: 200px; overflow-y: auto; margin-top: 8px; }
+        .leads-filter-option { display: flex; align-items: center; gap: 8px; padding: 7px 4px; cursor: pointer; }
+        .leads-filter-option[hidden], [data-filter-empty][hidden] { display: none; }
+        .leads-filter-option input { accent-color: #1f7890; }
+        .leads-filter-footer { border-top: 1px solid #e2e8f0; margin-top: 8px; }
+        .leads-filter-footer [data-filter-count] { margin-right: auto; color: #64748b; }
+        .leads-filter-footer [data-filter-done] { background: #1f7890; color: white; border-radius: 4px; padding: 6px 10px; }
+        .leads-queue-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; padding: 4px 8px; border: 0; border-radius: 999px; box-shadow: none; background: #f1f5f9; color: #475569; font-size: 12px; font-weight: 700; line-height: 16px; white-space: nowrap; }
+        .leads-queue-badge[data-level="amber"] { background: #fef3c7; color: #92400e; }
+        .leads-queue-badge[data-level="red"] { background: #ffe4e6; color: #9f1239; }
+    </style>
     <header class="mb-7 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
             <div class="text-xs font-bold uppercase tracking-[0.12em] text-[#1f7890]">PSC-10</div>
@@ -41,12 +59,7 @@
                                 <span data-sort-indicator="status" class="inline-flex h-4 w-4 items-center justify-center" aria-hidden="true"></span>
                                 <span data-sort-label="status" class="sr-only">not sorted</span>
                             </button>
-                            <select id="leads-status" class="mt-2 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-medium normal-case tracking-normal text-slate-700 outline-none transition focus:border-[#1f7890] focus:ring-2 focus:ring-[#1f7890]/15">
-                                <option value="">All statuses</option>
-                                @foreach ($statuses as $status)
-                                    <option value="{{ $status }}" @selected($selectedStatus === $status)>{{ $status }}</option>
-                                @endforeach
-                            </select>
+                            <x-leads.filter field="status" label="Status" :options="array_combine($statuses, $statuses)" :selected="$selectedStatus" placeholder="All statuses" />
                         </th>
                         <th class="min-w-40 px-5 py-3 font-bold">
                             <button type="button" data-sort="priority" class="leads-sort inline-flex items-center gap-1 text-left font-bold uppercase tracking-[0.08em] text-slate-600 hover:text-[#1f7890]">
@@ -54,12 +67,7 @@
                                 <span data-sort-indicator="priority" class="inline-flex h-4 w-4 items-center justify-center" aria-hidden="true"></span>
                                 <span data-sort-label="priority" class="sr-only">not sorted</span>
                             </button>
-                            <select id="leads-priority" class="mt-2 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-medium normal-case tracking-normal text-slate-700 outline-none transition focus:border-[#1f7890] focus:ring-2 focus:ring-[#1f7890]/15">
-                                <option value="">All priorities</option>
-                                @foreach ($priorities as $priority)
-                                    <option value="{{ $priority }}" @selected($selectedPriority === $priority)>{{ ucfirst($priority) }}</option>
-                                @endforeach
-                            </select>
+                            <x-leads.filter field="priority" label="Priority" :options="array_combine($priorities, array_map('ucfirst', $priorities))" :selected="$selectedPriority" placeholder="All priorities" />
                         </th>
                         @if ($canViewAdminColumns)
                             <th class="min-w-56 px-5 py-3 font-bold">
@@ -75,12 +83,7 @@
                                     <span data-sort-indicator="assigned_office" class="inline-flex h-4 w-4 items-center justify-center" aria-hidden="true"></span>
                                     <span data-sort-label="assigned_office" class="sr-only">not sorted</span>
                                 </button>
-                                <select id="leads-office" class="mt-2 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-medium normal-case tracking-normal text-slate-700 outline-none transition focus:border-[#1f7890] focus:ring-2 focus:ring-[#1f7890]/15">
-                                    <option value="">All offices</option>
-                                    @foreach ($offices as $code => $office)
-                                        <option value="{{ $code }}" @selected($selectedOffice === $code)>{{ $office }}</option>
-                                    @endforeach
-                                </select>
+                                <x-leads.filter field="office" label="Admin Office" :options="$offices" :selected="$selectedOffice" placeholder="All offices" />
                             </th>
                         @endif
                         <th class="min-w-44 px-5 py-3 font-bold">
@@ -189,17 +192,11 @@
 
                 return 'bg-slate-100 text-slate-600';
             };
-            const queueClasses = (level) => {
-                if (level === 'red') return 'bg-rose-100 text-rose-800 ring-1 ring-rose-200';
-                if (level === 'amber') return 'bg-amber-100 text-amber-800 ring-1 ring-amber-200';
-
-                return 'bg-slate-100 text-slate-600';
-            };
             const filteredLeads = () => leads
                 .filter((lead) => state.client_name === '' || normalise(lead.client_full_name).includes(normalise(state.client_name)))
-                .filter((lead) => state.status === '' || lead.status === state.status)
-                .filter((lead) => state.priority === '' || lead.priority === state.priority)
-                .filter((lead) => !canViewAdminColumns || state.office === '' || lead.assigned_office_code === state.office)
+                .filter((lead) => state.status.length === 0 || state.status.includes(lead.status))
+                .filter((lead) => state.priority.length === 0 || state.priority.includes(lead.priority))
+                .filter((lead) => !canViewAdminColumns || state.office.length === 0 || state.office.includes(lead.assigned_office_code))
                 .sort((left, right) => {
                     const result = ['days_in_queue'].includes(state.sort)
                         ? Number(left[state.sort]) - Number(right[state.sort])
@@ -227,7 +224,7 @@
                             <td class="px-5 py-4"><span class="rounded-full px-3 py-1 text-xs font-bold capitalize ${priorityClasses(lead.priority)}">${escapeHtml(lead.priority)}</span></td>
                             ${adminCells}
                             <td class="px-5 py-4 text-slate-600">${escapeHtml(lead.modified_at)}</td>
-                            <td class="px-5 py-4"><span class="inline-flex min-w-11 justify-center rounded-full px-3 py-1 text-xs font-bold ${queueClasses(lead.queue_age_level)}">${escapeHtml(lead.days_in_queue_label)}</span></td>
+                            <td class="px-5 py-4"><span class="leads-queue-badge" data-level="${escapeHtml(lead.queue_age_level)}">${escapeHtml(lead.days_in_queue_label)}</span></td>
                             <td class="px-5 py-4 text-right">
                                 <div class="inline-flex items-center justify-end gap-2">
                                     ${duplicateFlag}
@@ -245,9 +242,9 @@
                 const params = new URLSearchParams();
 
                 if (state.client_name) params.set('client_name', state.client_name);
-                if (state.status) params.set('status', state.status);
-                if (state.priority) params.set('priority', state.priority);
-                if (canViewAdminColumns && state.office) params.set('office', state.office);
+                state.status.forEach((value) => params.append('status[]', value));
+                state.priority.forEach((value) => params.append('priority[]', value));
+                if (canViewAdminColumns) state.office.forEach((value) => params.append('office[]', value));
                 params.set('sort', state.sort);
                 params.set('direction', state.direction);
                 params.set('per_page', state.perPage);
@@ -314,11 +311,66 @@
             };
 
             elements.clientName.addEventListener('input', (event) => updateFilter('client_name', event.target.value));
-            elements.status.addEventListener('change', (event) => updateFilter('status', event.target.value));
-            elements.priority.addEventListener('change', (event) => updateFilter('priority', event.target.value));
-            if (elements.office) {
-                elements.office.addEventListener('change', (event) => updateFilter('office', event.target.value));
-            }
+            const filterMenus = [];
+            document.querySelectorAll('[data-filter]').forEach((menu) => {
+                const field = menu.dataset.filter;
+                const trigger = elements[field];
+                const search = menu.querySelector('input[type="search"]');
+                const options = Array.from(menu.querySelectorAll('.leads-filter-option'));
+                const checkboxes = options.map((option) => option.querySelector('input'));
+                const count = menu.querySelector('[data-filter-count]');
+                const summary = trigger.querySelector('[data-filter-summary]');
+                const updateCount = () => count.textContent = `${checkboxes.filter((input) => input.checked).length} of ${checkboxes.length}`;
+                const searchOptions = () => {
+                    options.forEach((option) => option.hidden = !normalise(option.textContent).includes(normalise(search.value)));
+                    menu.querySelector('[data-filter-empty]').hidden = options.some((option) => !option.hidden);
+                };
+                const sync = () => {
+                    checkboxes.forEach((input) => input.checked = state[field].includes(input.value));
+                    const selected = options.filter((option) => option.querySelector('input').checked);
+                    summary.textContent = selected.length === 0 ? menu.dataset.placeholder
+                        : selected.length === 1 ? selected[0].textContent.trim() : `${selected.length} selected`;
+                    search.value = '';
+                    searchOptions();
+                    updateCount();
+                };
+                const position = () => {
+                    const rect = trigger.getBoundingClientRect();
+                    menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8))}px`;
+                    menu.style.top = `${Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - menu.offsetHeight - 8))}px`;
+                };
+                menu.addEventListener('beforetoggle', (event) => {
+                    if (event.newState === 'open') sync();
+                    trigger.setAttribute('aria-expanded', String(event.newState === 'open'));
+                });
+                menu.addEventListener('toggle', (event) => {
+                    if (event.newState === 'open') { position(); search.focus(); }
+                });
+                search.addEventListener('input', searchOptions);
+                checkboxes.forEach((input) => input.addEventListener('change', updateCount));
+                menu.querySelector('[data-filter-all]').addEventListener('click', () => {
+                    options.filter((option) => !option.hidden).forEach((option) => option.querySelector('input').checked = true);
+                    updateCount();
+                });
+                menu.querySelector('[data-filter-clear]').addEventListener('click', () => {
+                    checkboxes.forEach((input) => input.checked = false);
+                    updateCount();
+                });
+                menu.querySelector('[data-filter-cancel]').addEventListener('click', () => {
+                    menu.hidePopover();
+                    trigger.focus();
+                });
+                menu.querySelector('[data-filter-done]').addEventListener('click', () => {
+                    updateFilter(field, checkboxes.filter((input) => input.checked).map((input) => input.value));
+                    sync();
+                    menu.hidePopover();
+                    trigger.focus();
+                });
+                window.addEventListener('resize', () => { if (menu.matches(':popover-open')) position(); });
+                document.addEventListener('scroll', () => { if (menu.matches(':popover-open')) position(); }, true);
+                filterMenus.push({ menu, sync });
+                sync();
+            });
             elements.perPage.addEventListener('change', (event) => {
                 state.perPage = Number(event.target.value);
                 state.page = 1;
@@ -349,18 +401,19 @@
             });
             elements.clearFilter.addEventListener('click', () => {
                 state.client_name = '';
-                state.status = '';
-                state.priority = '';
-                state.office = '';
+                state.status = [];
+                state.priority = [];
+                state.office = [];
                 state.sort = 'updated_at';
                 state.direction = 'desc';
                 state.perPage = 10;
                 state.page = 1;
 
                 elements.clientName.value = '';
-                elements.status.value = '';
-                elements.priority.value = '';
-                if (elements.office) elements.office.value = '';
+                filterMenus.forEach(({ menu, sync }) => {
+                    if (menu.matches(':popover-open')) menu.hidePopover();
+                    sync();
+                });
                 elements.perPage.value = '10';
 
                 render();

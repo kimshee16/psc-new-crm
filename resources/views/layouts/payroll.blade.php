@@ -6,7 +6,7 @@
     $headerAccountType = $user?->account_type ?? 'Counsellor';
     $navItems = [
         ['route' => 'home', 'label' => 'Home', 'icon' => 'home'],
-        ['route' => 'applications', 'label' => 'Applications', 'icon' => 'applications'],
+        ['route' => 'applications', 'label' => 'Applications', 'icon' => 'applications', 'activeRoutes' => ['applications', 'applications.show']],
         ['route' => 'leads', 'label' => 'Leads', 'icon' => 'leads'],
         ['route' => 'clients', 'label' => 'Clients', 'icon' => 'clients', 'activeRoutes' => ['clients', 'clients.search', 'clients.create', 'clients.show']],
         ['route' => 'tasks', 'label' => 'Tasks', 'icon' => 'tasks'],

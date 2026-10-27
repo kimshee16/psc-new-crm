@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Country;
 use App\Models\EducationLevel;
+use App\Models\EventReferral;
 use App\Models\LeadRedirection;
 use App\Models\Location;
 use App\Models\Office;
@@ -57,6 +58,7 @@ class ConfigurationController extends Controller
 
         return view('crm.configuration.index', [
             'title' => 'PSC CRM - Configuration',
+            'eventReferrals' => EventReferral::query()->orderBy('sort_order')->orderBy('name')->get(),
             'events' => PscEvent::query()->orderByDesc('starts_at')->orderByDesc('id')
                 ->paginate(20, ['*'], 'event_page')->appends(['tab' => 'events']),
             'editingEvent' => $editingEvent,
@@ -428,6 +430,6 @@ class ConfigurationController extends Controller
     {
         $tab = (string) $request->query('tab', 'locations');
 
-        return in_array($tab, ['locations', 'education-levels', 'offices', 'regions', 'users', 'redirections', 'countries', 'events'], true) ? $tab : 'locations';
+        return in_array($tab, ['locations', 'education-levels', 'offices', 'regions', 'users', 'redirections', 'countries', 'events', 'event-marketing'], true) ? $tab : 'locations';
     }
 }

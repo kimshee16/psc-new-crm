@@ -55,4 +55,9 @@ class Client extends Model
     {
         return $this->hasMany(Lead::class);
     }
+
+    public function applications(): HasMany
+    {
+        return $this->hasMany(Application::class);
+    }
 }

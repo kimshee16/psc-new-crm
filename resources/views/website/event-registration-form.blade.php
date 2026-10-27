@@ -137,8 +137,8 @@
                         </label>
 
                         <label class="block">
-                            <span class="text-sm font-bold text-slate-700">Last Name <span class="text-red-600">*</span></span>
-                            <input name="surname" value="{{ old('surname') }}" required maxlength="80" pattern="[A-Za-z0-9 ]+" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
+                            <span class="text-sm font-bold text-slate-700">Last Name</span>
+                            <input name="surname" value="{{ old('surname') }}" maxlength="80" pattern="[A-Za-z0-9 ]+" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
                             @error('surname') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                         </label>
                     </div>
@@ -170,8 +170,8 @@
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <label class="block">
-                            <span class="text-sm font-bold text-slate-700">Date of Birth <span class="text-red-600">*</span></span>
-                            <input type="date" name="dob" value="{{ old('dob') }}" required max="{{ now()->toDateString() }}" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
+                            <span class="text-sm font-bold text-slate-700">Date of Birth</span>
+                            <input type="date" name="dob" value="{{ old('dob') }}" max="{{ now()->toDateString() }}" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
                             @error('dob') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                         </label>
 
@@ -217,8 +217,22 @@
                         </label>
                     </div>
 
+                    <label class="block">
+                        <span class="text-sm font-bold text-slate-700">How did you hear about our event? <span class="text-red-600">*</span></span>
+                        <select name="event_referral_id" required class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition" @disabled($eventReferrals->isEmpty())>
+                            <option value="">Select an option</option>
+                            @foreach ($eventReferrals as $referral)
+                                <option value="{{ $referral->id }}" @selected((string) old('event_referral_id') === (string) $referral->id)>{{ $referral->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('event_referral_id') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
+                    </label>
+                    @if ($eventReferrals->isEmpty())
+                        <p role="status" class="text-sm font-semibold text-slate-600">Registration is temporarily unavailable. Please try again later.</p>
+                    @endif
+
                     <div class="flex justify-end">
-                        <button type="submit" class="psc-event-submit">Register</button>
+                        <button type="submit" class="psc-event-submit" @disabled($eventReferrals->isEmpty())>Register</button>
                     </div>
                 </form>
             </section>

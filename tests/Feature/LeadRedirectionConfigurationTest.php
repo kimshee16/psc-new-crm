@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\LeadRedirection;
+use App\Models\EventReferral;
 use App\Models\Location;
 use App\Models\PscEvent;
 use App\Models\User;
@@ -143,6 +144,7 @@ class LeadRedirectionConfigurationTest extends TestCase
         foreach (['/contact', '/book-a-free-consultation', '/events/'.$event->id.'/register'] as $index => $url) {
             $email = 'redirected'.$index.'@example.test';
             $this->withSession(['psc.website_forms.captcha' => 'ABC123'])->post($url, [
+                'event_referral_id' => EventReferral::firstOrCreate(['name' => 'Social media'], ['active' => true])->id,
                 'first_name' => 'Test', 'surname' => 'Lead', 'dob' => '2000-01-01',
                 'email' => $email, 'phone_country_code' => '+61', 'phone_number' => '412555333',
                 'nationality' => 'Philippines', 'current_location' => 'Australia - Melbourne',

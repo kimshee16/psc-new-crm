@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Application;
 use App\Models\Client;
 use App\Models\Country;
 use App\Models\Lead;
 use App\Models\Office;
 use App\Models\User;
+use App\Support\PSC\ApplicationCreation;
 use App\Support\PSC\WebsiteLeadReferences;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -174,6 +177,7 @@ class ClientsController extends Controller
         return view('crm.clients.show', [
             'title' => 'PSC CRM - '.$clientName,
             'client' => $client,
+            'applicationCreation' => app(ApplicationCreation::class)->viewData($request->user()),
             'nationalities' => $this->nationalities($client['nationality']),
             'currentLocations' => $this->locations(),
             'states' => $this->states(),
@@ -260,18 +264,32 @@ class ClientsController extends Controller
 
     public function createApplication(Request $request, string $clientId): RedirectResponse
     {
+        $user = $request->user();
+        $sourceClient = $this->sourceClientForLead($clientId, $user);
+        abort_if($sourceClient === null, 404);
+
+        // Keep compatibility with the existing PSC-38 Lead-only form.
+        if ($request->has('category') || ! $request->boolean('create_lead')) {
+            $data = $request->validate([
+                'category' => ['required', Rule::in(array_keys(ApplicationCreation::TYPES))],
+                'create_lead' => ['sometimes', 'boolean'],
+            ]);
+            if (! $request->boolean('create_lead')) {
+                $application = DB::transaction(fn () => app(ApplicationCreation::class)->create(
+                    $user, $this->storedClientForLead($sourceClient, $user), $request->all()
+                ));
+
+                return redirect()->route('applications.show', $application)->with('success', 'Application created.');
+            }
+            $request->merge(['prospective_service' => $data['category']]);
+        }
         $validated = $request->validate([
-            'prospective_service' => ['required', 'string', 'max:80', Rule::in($this->prospectiveServices())],
+            'prospective_service' => ['required', 'string', 'max:80', Rule::in(array_unique([...$this->prospectiveServices(), ...array_keys(ApplicationCreation::TYPES)]))],
             'create_lead' => ['accepted'],
         ], [], [
             'prospective_service' => 'service',
             'create_lead' => 'Lead checkbox',
         ]);
-
-        $user = $request->user();
-        $sourceClient = $this->sourceClientForLead($clientId, $user);
-
-        abort_if($sourceClient === null, 404);
 
         $client = $this->storedClientForLead($sourceClient, $user);
         $assignedOfficeCode = $this->leadOfficeCodeFor($client, $user);
@@ -552,7 +570,7 @@ class ClientsController extends Controller
      */
     private function clientProfileFor(string $clientId, User $user): array
     {
-        if ($clientId === '152') {
+        if ($clientId === '152' && ! Client::where('client_id', 152)->exists()) {
             return [
                 'client_id' => 152,
                 'first_name' => 'Rika',
@@ -897,7 +915,7 @@ class ClientsController extends Controller
      */
     private function activeLeadRowsForClientId(int $clientId): array
     {
-        return Lead::query()
+        $leads = Lead::query()
             ->where('client_id', $clientId)
             ->whereNotIn('status', ['Converted', 'Withdrawn'])
             ->orderByDesc('updated_at')
@@ -913,6 +931,20 @@ class ClientsController extends Controller
                 'last_modified' => $lead->updated_at?->format('d/m/Y') ?? '',
             ])
             ->all();
+
+        $applications = Application::query()->where('client_id', $clientId)->active()
+            ->assignedTo(auth()->user())->with('primaryCounsellor')->latest('updated_at')->get()
+            ->map(fn (Application $application): array => [
+                'id' => 'Application ID '.$application->id,
+                'url' => route('applications.show', $application),
+                'summary' => $application->type_label.($application->visa_subclass ? ' — '.$application->visa_subclass : ''),
+                'counsellor' => $application->primaryCounsellor?->name ?? '',
+                'status' => $application->status,
+                'critical_date' => $application->critical_date?->format('d/m/Y') ?? '',
+                'last_modified' => $application->updated_at?->format('d/m/Y') ?? '',
+            ])->all();
+
+        return [...$applications, ...$leads];
     }
 
     /**

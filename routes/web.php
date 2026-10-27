@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\ApplicationsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientsController;
 use App\Http\Controllers\ConfigurationController;
 use App\Http\Controllers\CounsellorIntakeFormController;
 use App\Http\Controllers\CountryConfigurationController;
 use App\Http\Controllers\EventConfigurationController;
+use App\Http\Controllers\EventReferralConfigurationController;
 use App\Http\Controllers\EventRegistrationFormController;
 use App\Http\Controllers\HolidaysController;
 use App\Http\Controllers\LeadsController;
@@ -63,7 +65,6 @@ $registerRoutes = function () {
         })->name('home');
 
         foreach ([
-            'applications' => 'Applications',
             'tasks' => 'Tasks',
             'rfis' => 'RFI',
             'reports' => 'Reports',
@@ -74,6 +75,12 @@ $registerRoutes = function () {
                 'heading' => $heading,
             ]))->name($route);
         }
+
+        Route::get('/applications', [ApplicationsController::class, 'index'])->name('applications');
+        Route::get('/applications/export', [ApplicationsController::class, 'export'])->name('applications.export');
+        Route::get('/applications/{application}', [ApplicationsController::class, 'show'])->whereNumber('application')->name('applications.show');
+        Route::patch('/applications/{application}', [ApplicationsController::class, 'update'])->whereNumber('application')->name('applications.update');
+        Route::get('/organisations/{organisation}', [ApplicationsController::class, 'organisation'])->whereNumber('organisation')->name('organisations.show');
 
         Route::get('/clients', [ClientsController::class, 'index'])->name('clients');
         Route::get('/clients/export', [ClientsController::class, 'export'])->name('clients.export');
@@ -89,6 +96,7 @@ $registerRoutes = function () {
 
         Route::get('/leads', [LeadsController::class, 'index'])->name('leads');
         Route::get('/leads/export', [LeadsController::class, 'export'])->name('leads.export');
+        Route::post('/leads/{leadId}/applications', [LeadsController::class, 'createApplication'])->name('leads.applications.create');
         Route::patch('/leads/{leadId}', [LeadsController::class, 'update'])->name('leads.update');
         Route::get('/leads/{leadId}', [LeadsController::class, 'show'])->name('leads.show');
         Route::get('/leads/{leadId}/edit', [LeadsController::class, 'edit'])->name('leads.edit');
@@ -101,6 +109,8 @@ $registerRoutes = function () {
         Route::patch('/holidays/{holiday}/cancel', [HolidaysController::class, 'cancel'])->name('holidays.cancel');
 
         Route::get('/configuration', [ConfigurationController::class, 'index'])->name('configuration');
+        Route::post('/configuration/event-marketing', [EventReferralConfigurationController::class, 'store'])->name('configuration.event-marketing.store');
+        Route::patch('/configuration/event-marketing/{eventReferral}', [EventReferralConfigurationController::class, 'update'])->name('configuration.event-marketing.update');
         Route::post('/configuration/events', [EventConfigurationController::class, 'store'])->name('configuration.events.store');
         Route::patch('/configuration/events/{event}', [EventConfigurationController::class, 'update'])->name('configuration.events.update');
         Route::post('/configuration/countries', [CountryConfigurationController::class, 'store'])->name('configuration.countries.store');

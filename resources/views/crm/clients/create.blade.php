@@ -7,6 +7,8 @@
         }
 
         .client-profile-card {
+            container-type: inline-size;
+            min-width: 0;
             border: 1px solid #d8dee8;
             border-radius: 4px;
             background: #fff;
@@ -33,6 +35,7 @@
 
         .client-profile-control {
             width: 100%;
+            min-width: 0;
             min-height: 28px;
             border: 1px solid #aeb7c4;
             border-radius: 3px;
@@ -55,8 +58,21 @@
 
         .client-phone-fields {
             display: grid;
-            grid-template-columns: minmax(156px, 0.58fr) minmax(112px, 1fr);
+            grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+            min-width: 0;
             gap: 8px;
+        }
+
+        @container (max-width: 460px) {
+            .client-phone-fields {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        @media (max-width: 1280px) {
+            .client-phone-fields {
+                grid-template-columns: minmax(0, 1fr);
+            }
         }
 
         .client-profile-action {
@@ -255,9 +271,9 @@
                     <div class="client-profile-field">
                         <label for="client-phone-number" class="client-profile-label">Mobile number<span class="client-profile-required">*</span></label>
                         <div class="client-phone-fields">
-                            <select id="client-phone-country-code" name="phone_country_code" required class="client-profile-control @error('phone_country_code') is-invalid @enderror">
+                            <select id="client-phone-country-code" name="phone_country_code" aria-label="Country calling code" required class="client-profile-control @error('phone_country_code') is-invalid @enderror">
                                 @foreach ($phoneCountryCodes as $code => $label)
-                                    <option value="{{ $code }}" @selected(old('phone_country_code', $client['phone_country_code'] ?? '+61') === $code)>{{ $label }}</option>
+                                    <option value="{{ $code }}" @selected(old('phone_country_code', $client['phone_country_code'] ?? '+61') === $code)>{{ $code }}</option>
                                 @endforeach
                             </select>
                             <input id="client-phone-number" name="phone_number" value="{{ old('phone_number', $client['phone_number'] ?? '') }}" type="text" required inputmode="tel" maxlength="40" pattern="[0-9 ()-]{6,24}" placeholder="412 345 678" class="client-profile-control @error('phone_number') is-invalid @enderror">

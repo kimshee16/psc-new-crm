@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
+use App\Models\EventReferral;
 use App\Models\Lead;
 use App\Models\PscEvent;
 use App\Models\User;
@@ -60,6 +61,7 @@ class EventRegistrationFormController extends Controller
                 'source' => 'Event',
                 'psc_event_id' => $event->getKey(),
                 'event_name' => $event->name,
+                'event_discovery_channel' => EventReferral::findOrFail($validated['event_referral_id'])->name,
                 'status' => 'New',
                 'first_name' => (string) $validated['first_name'],
                 'middle_name' => (string) ($validated['middle_name'] ?? ''),
@@ -95,6 +97,7 @@ class EventRegistrationFormController extends Controller
         return [
             'title' => 'Registration - '.$event->name,
             'event' => $event,
+            'eventReferrals' => EventReferral::activeOptions(),
             'countries' => WebsiteLeadReferences::countries(),
             'phoneCountryCodes' => WebsiteLeadReferences::phoneCountryCodes(),
             'locations' => $this->references->locationNames(),
@@ -110,18 +113,23 @@ class EventRegistrationFormController extends Controller
         $educationLevels = $this->references->educationLevelNames();
 
         $validator = Validator::make($request->all(), [
+            'event_referral_id' => ['required', 'integer', Rule::exists('event_referrals', 'id')->where('active', true)],
             'first_name' => ['required', 'string', 'max:80', 'regex:/^[A-Za-z0-9 ]+$/'],
             'middle_name' => ['nullable', 'string', 'max:80', 'regex:/^[A-Za-z0-9 ]+$/'],
-            'surname' => ['required', 'string', 'max:80', 'regex:/^[A-Za-z0-9 ]+$/'],
+            'surname' => ['nullable', 'string', 'max:80', 'regex:/^[A-Za-z0-9 ]+$/'],
             'email' => ['required', 'email', 'max:120'],
             'phone_country_code' => ['required', 'string', Rule::in(array_keys(WebsiteLeadReferences::phoneCountryCodes()))],
             'phone_number' => ['required', 'string', 'max:40', 'regex:/^[0-9 ()-]{6,24}$/'],
-            'dob' => ['required', 'date', 'before_or_equal:today'],
+            'dob' => ['nullable', 'date', 'before_or_equal:today'],
             'nationality' => ['required', 'string', Rule::in(WebsiteLeadReferences::countries())],
             'current_location' => ['required', 'string', Rule::in($this->references->locationNames())],
             'highest_education_level' => ['nullable', 'string', Rule::in($educationLevels)],
             'highest_education_level_other' => ['nullable', 'string', 'max:160'],
-        ], [], [
+        ], [
+            'event_referral_id.required' => 'Please select how you heard about our event.',
+            'event_referral_id.exists' => 'Please select an available option for how you heard about our event.',
+        ], [
+            'event_referral_id' => 'how you heard about our event',
             'phone_country_code' => 'country code',
             'phone_number' => 'phone number',
             'dob' => 'date of birth',
@@ -169,9 +177,9 @@ class EventRegistrationFormController extends Controller
 
         $attributes = [
             'first_name' => (string) $validated['first_name'],
-            'middle_name' => (string) ($validated['middle_name'] ?? ''),
-            'surname' => (string) ($validated['surname'] ?? ''),
-            'dob' => $validated['dob'],
+            'middle_name' => (string) ($validated['middle_name'] ?? $client?->middle_name ?? ''),
+            'surname' => (string) ($validated['surname'] ?? $client?->surname ?? ''),
+            'dob' => $validated['dob'] ?? $client?->dob,
             'phone_country_code' => $phoneCountryCode,
             'phone_number' => $phoneNumber,
             'mobile' => $mobile,
@@ -215,12 +223,28 @@ class EventRegistrationFormController extends Controller
      */
     private function clientMatchingSubmission(array $validated): ?Client
     {
-        return Client::query()
-            ->whereRaw('LOWER(TRIM(first_name)) = ?', [strtolower(trim((string) $validated['first_name']))])
-            ->whereRaw("LOWER(TRIM(COALESCE(surname, ''))) = ?", [strtolower(trim((string) $validated['surname']))])
-            ->whereDate('dob', (string) $validated['dob'])
-            ->orderBy('id')
-            ->first();
+        $surname = trim((string) ($validated['surname'] ?? ''));
+        $dob = $validated['dob'] ?? null;
+        $query = Client::query()
+            ->whereRaw('LOWER(TRIM(first_name)) = ?', [strtolower(trim((string) $validated['first_name']))]);
+
+        if ($surname !== '') {
+            $query->whereRaw("LOWER(TRIM(COALESCE(surname, ''))) = ?", [strtolower($surname)]);
+        }
+        if ($dob !== null) {
+            $query->whereDate('dob', $dob);
+        }
+
+        if ($surname !== '' && $dob !== null) {
+            return $query->orderBy('id')->first();
+        }
+
+        // With incomplete identity details, require a unique name/email match.
+        $matches = $query
+            ->whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim((string) $validated['email']))])
+            ->limit(2)->get();
+
+        return $matches->count() === 1 ? $matches->first() : null;
     }
 
     private function nextClientId(): int

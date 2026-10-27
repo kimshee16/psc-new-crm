@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Lead;
+use App\Models\EventReferral;
 use App\Models\PscEvent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -135,7 +136,7 @@ class EventConfigurationTest extends TestCase
         $this->assertSame($second->name, $lead->fresh()->event_name);
         $second->update(['name' => 'Renamed Selected Fair', 'active' => false]);
         $this->get('/leads/'.$lead->lead_id)->assertOk()->assertSee('Renamed Selected Fair')
-            ->assertSee('(Inactive)')->assertSee('Recorded event: Study Pathways Fair');
+            ->assertSee('(Inactive)')->assertDontSee('Recorded event: Study Pathways Fair');
         $this->patch('/leads/'.$lead->lead_id, $data)->assertSessionHasNoErrors();
         $this->assertSame('Study Pathways Fair', $lead->fresh()->event_name);
 
@@ -201,6 +202,7 @@ class EventConfigurationTest extends TestCase
     private function registrationData(): array
     {
         return [
+            'event_referral_id' => EventReferral::firstOrCreate(['name' => 'Social media'], ['active' => true])->id,
             'first_name' => 'Event', 'surname' => 'Visitor', 'email' => 'event.visitor@example.test',
             'phone_country_code' => '+61', 'phone_number' => '412 555 999', 'dob' => '1999-05-20',
             'nationality' => 'Philippines', 'current_location' => 'Australia - Melbourne',

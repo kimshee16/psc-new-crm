@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Lead;
 use App\Models\PscEvent;
 use App\Models\User;
+use App\Support\PSC\ApplicationCreation;
 use App\Support\PSC\WebsiteLeadReferences;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -142,6 +143,22 @@ class LeadsController extends Controller
             ->with('success', 'Lead changes were saved.');
     }
 
+    public function createApplication(Request $request, string $leadId, ApplicationCreation $creation): RedirectResponse
+    {
+        $lead = $this->visibleLeadQuery($request->user())->with('client')->where('lead_id', $leadId)->firstOrFail();
+        abort_unless($lead->client, 404);
+        $request->validate([
+            'category' => ['required', Rule::in(array_keys(ApplicationCreation::TYPES))],
+            'create_lead' => ['sometimes', 'boolean'],
+        ]);
+        if ($request->boolean('create_lead')) {
+            return redirect()->route('leads.show', $lead->lead_id)->with('success', 'Lead retained. No application was created.');
+        }
+        $application = $creation->create($request->user(), $lead->client, $request->all(), $lead);
+
+        return redirect()->route('applications.show', $application)->with('success', 'Application created. Lead converted.');
+    }
+
     private function recordView(Request $request, string $leadId): View
     {
         $lead = $this->visibleLeadQuery($request->user())
@@ -152,6 +169,7 @@ class LeadsController extends Controller
         return view('crm.leads.show', [
             'title' => 'PSC CRM - Lead '.$lead->lead_id,
             'lead' => $this->leadRecord($lead),
+            'applicationCreation' => app(ApplicationCreation::class)->viewData($request->user()),
             'statuses' => $this->statuses(),
             'priorities' => $this->priorities(),
             'prospectiveServices' => $this->prospectiveServices(),
@@ -193,6 +211,7 @@ class LeadsController extends Controller
             'source' => $lead->source,
             'psc_event_id' => $lead->psc_event_id,
             'event_name' => $lead->event_name ?? '',
+            'event_discovery_channel' => $lead->event_discovery_channel ?? '',
             'highest_education_level' => $lead->highest_education_level ?? '',
             'assigned_name' => $lead->assigned_name,
             'secondary_counsellor' => $lead->secondary_counsellor ?? $client?->secondary_counsellor ?? '',
@@ -211,19 +230,18 @@ class LeadsController extends Controller
         $availableOffices = $this->availableOfficeFilters($user);
         $rows = $this->visibleLeadRows($user);
         $clientName = trim((string) $request->query('client_name', ''));
+        $status = $this->selectedStatus($request);
+        $priority = $this->selectedPriority($request);
+        $office = $this->selectedOffice($request, $availableOffices);
 
-        $rows = array_values(array_filter($rows, function (array $lead) use ($request, $availableOffices, $clientName): bool {
+        $rows = array_values(array_filter($rows, function (array $lead) use ($status, $priority, $office, $clientName): bool {
             if ($clientName !== '' && ! str_contains(strtolower((string) $lead['client_full_name']), strtolower($clientName))) {
                 return false;
             }
 
-            $status = $this->selectedStatus($request);
-            $priority = $this->selectedPriority($request);
-            $office = $this->selectedOffice($request, $availableOffices);
-
-            return ($status === '' || $lead['status'] === $status)
-                && ($priority === '' || $lead['priority'] === $priority)
-                && ($office === '' || $lead['assigned_office_code'] === $office);
+            return ($status === [] || in_array($lead['status'], $status, true))
+                && ($priority === [] || in_array($lead['priority'], $priority, true))
+                && ($office === [] || in_array($lead['assigned_office_code'], $office, true));
         }));
 
         $sort = $this->sortColumn($request);
@@ -510,28 +528,36 @@ class LeadsController extends Controller
         return max(1, (int) $request->query('page', 1));
     }
 
-    private function selectedStatus(Request $request): string
+    private function selectedStatus(Request $request): array
     {
-        $status = (string) $request->query('status', '');
-
-        return in_array($status, $this->statuses(), true) ? $status : '';
+        return $this->selectedFilter($request, 'status', $this->statuses());
     }
 
-    private function selectedPriority(Request $request): string
+    private function selectedPriority(Request $request): array
     {
-        $priority = strtolower((string) $request->query('priority', ''));
-
-        return in_array($priority, $this->priorities(), true) ? $priority : '';
+        return $this->selectedFilter($request, 'priority', $this->priorities(), 'strtolower');
     }
 
     /**
      * @param  array<string, string>  $availableOffices
      */
-    private function selectedOffice(Request $request, array $availableOffices): string
+    private function selectedOffice(Request $request, array $availableOffices): array
     {
-        $office = strtoupper((string) $request->query('office', ''));
+        if (! $this->canViewAdminColumns($request->user())) {
+            return [];
+        }
 
-        return array_key_exists($office, $availableOffices) ? $office : '';
+        return $this->selectedFilter($request, 'office', array_keys($availableOffices), 'strtoupper');
+    }
+
+    private function selectedFilter(Request $request, string $key, array $allowed, ?callable $normalise = null): array
+    {
+        $values = $request->query($key, []);
+        $values = is_array($values) ? $values : [$values];
+        $values = array_filter($values, 'is_string');
+        $values = array_map(fn (string $value): string => $normalise ? $normalise(trim($value)) : trim($value), $values);
+
+        return array_values(array_unique(array_intersect($values, $allowed)));
     }
 
     /**
@@ -555,7 +581,7 @@ class LeadsController extends Controller
      */
     private function prospectiveServices(): array
     {
-        return ['Study', 'Visa', 'Migration', 'Consultation', 'Other'];
+        return array_unique(['Study', 'Visa', 'Migration', 'Consultation', 'Other', ...array_keys(ApplicationCreation::TYPES)]);
     }
 
     /**

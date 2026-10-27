@@ -14,10 +14,30 @@
 
         .lead-field {
             display: grid;
-            grid-template-columns: 150px minmax(0, 1fr);
+            grid-template-columns: 150px minmax(0, 320px);
             align-items: center;
             gap: 12px;
             min-height: 38px;
+        }
+
+        .lead-field.hidden {
+            display: none;
+        }
+
+        .lead-summary-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 12px 40px;
+        }
+
+        .lead-notes {
+            grid-template-columns: 150px minmax(0, 1fr);
+        }
+
+        @media (min-width: 1280px) {
+            .lead-summary-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
         }
 
         .lead-label {
@@ -109,6 +129,33 @@
             line-height: 1.5;
         }
 
+        .lead-success {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .lead-alert-close {
+            display: inline-flex;
+            flex-shrink: 0;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .lead-alert-close:hover {
+            background: #d1fae5;
+        }
+
+        .lead-alert-close:focus-visible {
+            outline: 2px solid currentColor;
+            outline-offset: 2px;
+        }
+
         .lead-modal {
             position: fixed;
             inset: 0;
@@ -166,8 +213,11 @@
         </header>
 
         @if (session('success'))
-            <div class="lead-alert mb-5 border-emerald-200 bg-emerald-50 font-semibold text-emerald-700">
-                {{ session('success') }}
+            <div id="lead-success-message" role="status" class="lead-alert lead-success mb-5 border-emerald-200 bg-emerald-50 font-semibold text-emerald-700">
+                <span>{{ session('success') }}</span>
+                <button type="button" class="lead-alert-close" aria-label="Dismiss success message" aria-controls="lead-success-message">
+                    {!! payroll_icon('x', 'h-5 w-5') !!}
+                </button>
             </div>
         @endif
 
@@ -185,7 +235,7 @@
         <section class="lead-panel p-6">
             <h2 class="mb-5 text-sm font-extrabold text-[#101820]">Lead Summary</h2>
 
-            <div class="grid grid-cols-1 gap-x-14 gap-y-3 lg:grid-cols-2">
+            <div class="lead-summary-grid">
                 <div class="space-y-3">
                     <div class="lead-field">
                         <div class="lead-label">Lead ID</div>
@@ -244,7 +294,7 @@
                             @endforeach
                         </select>
                     </div>
-                    <div id="lead-event-field" class="lead-field">
+                    <div id="lead-event-field" class="lead-field {{ old('source', $lead['source']) === 'Event' ? '' : 'hidden' }}">
                         <label for="lead-event" class="lead-label">Event</label>
                         <select id="lead-event" name="psc_event_id" class="lead-control @error('psc_event_id') is-invalid @enderror">
                             <option value="">{{ ! $lead['psc_event_id'] && $lead['event_name'] ? 'Keep recorded event: '.$lead['event_name'] : 'Select event' }}</option>
@@ -252,9 +302,10 @@
                                 <option value="{{ $event->id }}" @selected((string) old('psc_event_id', $lead['psc_event_id']) === (string) $event->id)>#{{ $event->id }} — {{ $event->name }} — {{ $event->starts_at->format('d M Y') }}{{ $event->active ? '' : ' (Inactive)' }}</option>
                             @endforeach
                         </select>
-                        @if ($lead['event_name'])
-                            <p class="mt-1 text-xs text-slate-500">Recorded event: {{ $lead['event_name'] }}</p>
-                        @endif
+                    </div>
+                    <div id="lead-event-discovery-field" class="lead-field {{ old('source', $lead['source']) === 'Event' ? '' : 'hidden' }}">
+                        <label for="lead-event-discovery" class="lead-label">Event discovery channel</label>
+                        <input id="lead-event-discovery" value="{{ $lead['event_discovery_channel'] }}" placeholder="Not recorded" readonly class="lead-control">
                     </div>
                     <div class="lead-field">
                         <label for="lead-highest-education" class="lead-label">Highest Ed</label>
@@ -326,7 +377,7 @@
             </div>
 
             <div class="mt-8 grid grid-cols-1 gap-x-14 lg:grid-cols-2">
-                <div class="lead-field lg:col-span-2">
+                <div class="lead-field lead-notes lg:col-span-2">
                     <label for="lead-notes" class="lead-label self-start pt-2">Notes</label>
                     <textarea id="lead-notes" name="notes" rows="5" maxlength="4000" class="lead-control min-h-[124px] resize-y @error('notes') is-invalid @enderror">{{ old('notes', $lead['notes']) }}</textarea>
                 </div>
@@ -340,64 +391,23 @@
         </footer>
     </form>
 
-    <div id="lead-create-application-modal" class="lead-modal" aria-hidden="true">
-        <div role="dialog" aria-modal="true" aria-labelledby="lead-create-application-title" class="w-full max-w-[520px] rounded-lg bg-white p-6 shadow-2xl">
-            <div class="flex items-start justify-between gap-4">
-                <h2 id="lead-create-application-title" class="text-xl font-extrabold text-[#101820]">Create Application</h2>
-                <button id="lead-create-application-close" type="button" title="Close dialog" class="text-slate-500 transition hover:text-slate-900">
-                    <span aria-hidden="true" class="text-2xl leading-none">&times;</span>
-                    <span class="sr-only">Close dialog</span>
-                </button>
-            </div>
-            <div class="mt-5 space-y-4">
-                <label class="block text-sm font-bold text-slate-700">
-                    Application type
-                    <select class="lead-control mt-2">
-                        <option>Study application</option>
-                        <option>Visa application</option>
-                        <option>Migration service</option>
-                    </select>
-                </label>
-                <label class="block text-sm font-bold text-slate-700">
-                    Initial summary
-                    <input type="text" value="{{ $lead['client_full_name'] }} - {{ $lead['prospective_service'] }}" class="lead-control mt-2">
-                </label>
-            </div>
-            <div class="mt-7 flex flex-wrap justify-end gap-3">
-                <button id="lead-create-application-cancel" type="button" class="lead-action lead-secondary">Cancel</button>
-                <a href="{{ route('applications') }}" class="lead-action lead-primary">Continue</a>
-            </div>
-        </div>
-    </div>
+    <x-applications.create-modal :action="route('leads.applications.create', $lead['lead_id'])" trigger="lead-create-application-open" :configuration="$applicationCreation" :from-lead="true" />
 
     <script>
         (() => {
+            const successMessage = document.getElementById('lead-success-message');
+            successMessage?.querySelector('.lead-alert-close').addEventListener('click', () => {
+                successMessage.remove();
+            });
+
             const source = document.getElementById('lead-source');
             const eventField = document.getElementById('lead-event-field');
-            const modal = document.getElementById('lead-create-application-modal');
-            const openModal = document.getElementById('lead-create-application-open');
-            const closeModal = document.getElementById('lead-create-application-close');
-            const cancelModal = document.getElementById('lead-create-application-cancel');
-
+            const discoveryField = document.getElementById('lead-event-discovery-field');
             const syncEventField = () => {
                 eventField.classList.toggle('hidden', source.value !== 'Event');
+                discoveryField.classList.toggle('hidden', source.value !== 'Event');
             };
-            const setModalOpen = (isOpen) => {
-                modal.classList.toggle('is-open', isOpen);
-                modal.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
-            };
-
             source.addEventListener('change', syncEventField);
-            openModal.addEventListener('click', () => setModalOpen(true));
-            closeModal.addEventListener('click', () => setModalOpen(false));
-            cancelModal.addEventListener('click', () => setModalOpen(false));
-            modal.addEventListener('click', (event) => {
-                if (event.target === modal) setModalOpen(false);
-            });
-            document.addEventListener('keydown', (event) => {
-                if (event.key === 'Escape') setModalOpen(false);
-            });
-
             syncEventField();
         })();
     </script>
