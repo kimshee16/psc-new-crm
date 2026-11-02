@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ApplicationTypeSetting;
 use App\Models\Country;
 use App\Models\EducationLevel;
 use App\Models\EventReferral;
@@ -11,6 +12,7 @@ use App\Models\Office;
 use App\Models\PscEvent;
 use App\Models\Region;
 use App\Models\User;
+use App\Support\PSC\EducationLevelOrdering;
 use App\Support\PSC\WebsiteLeadReferences;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -84,6 +86,9 @@ class ConfigurationController extends Controller
             'userSort' => $userSort,
             'userDirection' => $userDirection,
             'activeConfigurationTab' => $this->activeConfigurationTab($request),
+            'applicationTypes' => ApplicationTypeSetting::types(),
+            'applicationTabOptions' => ApplicationTypeSetting::TABS,
+            'applicationTypeSettings' => ApplicationTypeSetting::query()->get()->keyBy('category'),
             'educationLevels' => EducationLevel::query()
                 ->orderBy('sort_order')
                 ->orderBy('name')
@@ -223,11 +228,10 @@ class ConfigurationController extends Controller
 
         $validated = $request->validate($this->educationLevelRules(), [], $this->educationLevelAttributes());
 
-        EducationLevel::create([
+        app(EducationLevelOrdering::class)->save(new EducationLevel, [
             'name' => trim((string) $validated['name']),
             'active' => $request->boolean('active', true),
-            'sort_order' => (int) ($validated['sort_order'] ?? $this->nextEducationSortOrder()),
-        ]);
+        ], isset($validated['sort_order']) ? (int) $validated['sort_order'] : null);
 
         return redirect()
             ->route('configuration', ['tab' => 'education-levels'])
@@ -244,11 +248,10 @@ class ConfigurationController extends Controller
             $this->educationLevelAttributes()
         );
 
-        $educationLevel->fill([
+        app(EducationLevelOrdering::class)->save($educationLevel, [
             'name' => trim((string) $validated['name']),
             'active' => $request->boolean('active'),
-            'sort_order' => (int) ($validated['sort_order'] ?? $educationLevel->sort_order),
-        ])->save();
+        ], isset($validated['sort_order']) ? (int) $validated['sort_order'] : null);
 
         return redirect()
             ->route('configuration', ['tab' => 'education-levels'])
@@ -259,7 +262,7 @@ class ConfigurationController extends Controller
     {
         $this->authorizeConfiguration($request->user());
 
-        $educationLevel->delete();
+        app(EducationLevelOrdering::class)->remove($educationLevel);
 
         return redirect()
             ->route('configuration', ['tab' => 'education-levels'])
@@ -367,11 +370,6 @@ class ConfigurationController extends Controller
         ];
     }
 
-    private function nextEducationSortOrder(): int
-    {
-        return ((int) EducationLevel::query()->max('sort_order')) + 1;
-    }
-
     /**
      * @return array<string, list<mixed>>
      */
@@ -430,6 +428,6 @@ class ConfigurationController extends Controller
     {
         $tab = (string) $request->query('tab', 'locations');
 
-        return in_array($tab, ['locations', 'education-levels', 'offices', 'regions', 'users', 'redirections', 'countries', 'events', 'event-marketing'], true) ? $tab : 'locations';
+        return in_array($tab, ['locations', 'education-levels', 'offices', 'regions', 'users', 'redirections', 'countries', 'events', 'event-marketing', 'application-types'], true) ? $tab : 'locations';
     }
 }

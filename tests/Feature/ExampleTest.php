@@ -522,7 +522,7 @@ class ExampleTest extends TestCase
             ->assertSee('View client')
             ->assertSee('name="prospective_service"', false)
             ->assertSee('name="critical_date"', false)
-            ->assertSee('name="notes"', false)
+            ->assertSee('data-record-notes', false)
             ->assertSee('tel:+61412555000', false)
             ->assertSee('mailto:rika.supardi.2301@example.test', false);
 
@@ -555,7 +555,7 @@ class ExampleTest extends TestCase
             'assigned_name' => 'Jessica Morgan',
             'secondary_counsellor' => 'Priya Raman',
             'migration_agent' => 'Nina Patel',
-            'notes' => 'Wants to study engineering',
+            'notes' => null,
         ]);
     }
 
@@ -870,7 +870,7 @@ class ExampleTest extends TestCase
             ->assertStatus(200)
             ->assertSee('Success! Client changes were saved.')
             ->assertSee('ana.updated@example.test')
-            ->assertSee('Updated record note')
+            ->assertDontSee('Updated record note')
             ->assertSee('Edit')
             ->assertDontSee('Save changes');
     }
@@ -974,43 +974,27 @@ class ExampleTest extends TestCase
         ];
 
         $this->actingAs($user)->post('/clients/1001/edit');
-
-        $this->actingAs($user)
-            ->patch('/clients/1001', $payload + [
-                'note_bodies' => ['First sticky note', '', 'Second sticky note'],
-            ])
-            ->assertRedirect('/clients/1001');
-
-        $savedNotes = json_decode((string) Client::where('client_id', 1001)->value('notes'), true);
-
+        $this->patch('/clients/1001', $payload)->assertRedirect('/clients/1001');
+        $client = Client::where('client_id', 1001)->firstOrFail();
+        foreach (['First sticky note', 'Second sticky note'] as $body) {
+            $this->postJson('/clients/1001/notes', [
+                'version' => hash('sha256', (string) $client->fresh()->notes), 'body' => $body,
+            ])->assertOk();
+        }
+        $savedNotes = json_decode($client->fresh()->notes, true);
         $this->assertCount(2, $savedNotes);
-        $this->assertSame('First sticky note', $savedNotes[0]['body'] ?? null);
-        $this->assertSame('Second sticky note', $savedNotes[1]['body'] ?? null);
-        $this->assertSame('Jessica Morgan', $savedNotes[0]['author'] ?? null);
-        $this->assertNotEmpty($savedNotes[0]['datetime'] ?? null);
-
-        $this->actingAs($user)
-            ->get('/clients/1001')
-            ->assertStatus(200)
-            ->assertSee('client-note', false)
-            ->assertSee('First sticky note')
-            ->assertSee('Second sticky note')
-            ->assertSee('Added by Jessica Morgan');
-
-        $this->actingAs($user)->post('/clients/1001/edit');
-
-        $this->actingAs($user)
-            ->patch('/clients/1001', $payload + [
-                'note_bodies' => ['Second sticky note'],
-            ])
-            ->assertRedirect('/clients/1001');
-
-        $remainingNotes = json_decode((string) Client::where('client_id', 1001)->value('notes'), true);
-
-        $this->assertCount(1, $remainingNotes);
-        $this->assertSame('Second sticky note', $remainingNotes[0]['body'] ?? null);
-        $this->assertSame('Jessica Morgan', $remainingNotes[0]['author'] ?? null);
-        $this->assertNotEmpty($remainingNotes[0]['datetime'] ?? null);
+        $this->assertSame('Second sticky note', $savedNotes[0]['body']);
+        $this->assertSame('First sticky note', $savedNotes[1]['body']);
+        $this->assertSame('Jessica Morgan', $savedNotes[0]['author']);
+        $this->assertNotEmpty($savedNotes[0]['datetime']);
+        $this->get('/clients/1001')->assertOk()->assertSee('data-record-notes', false)
+            ->assertSeeInOrder(['Second sticky note', 'First sticky note'])->assertSee('Added by Jessica Morgan');
+        $this->deleteJson('/clients/1001/notes/'.$savedNotes[1]['id'], [
+            'version' => hash('sha256', $client->fresh()->notes),
+        ])->assertOk();
+        $remaining = json_decode($client->fresh()->notes, true);
+        $this->assertCount(1, $remaining);
+        $this->assertSame('Second sticky note', $remaining[0]['body']);
     }
 
     public function test_client_record_edit_lock_blocks_other_users_until_released(): void

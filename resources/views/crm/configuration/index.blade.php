@@ -5,6 +5,12 @@
         $activeConfigurationTab = $activeConfigurationTab ?? 'locations';
         $configurationTabs = [
             [
+                'id' => 'application-types',
+                'label' => 'Application Types',
+                'description' => 'Choose the tabs available for each application type.',
+                'count' => count($applicationTypes),
+            ],
+            [
                 'id' => 'event-marketing',
                 'label' => 'Event Referral',
                 'description' => 'Referral options used by event registration forms.',
@@ -63,6 +69,25 @@
     @endphp
 
     <style>
+        .configuration-layout { display: flex; flex-wrap: nowrap; gap: 20px; align-items: flex-start; width: 100%; }
+        .configuration-navigation { flex: 0 0 240px; width: 240px; }
+        .configuration-content { flex: 1 1 0%; min-width: 0; }
+        .configuration-navigation a { display: block; border-left: 3px solid transparent; }
+        .configuration-navigation a[aria-current="page"] { border-left-color: #1f7890; background: #eaf7fc; color: #123348; }
+        @media (max-width: 1000px) {
+            .configuration-layout { gap: 16px; }
+            .configuration-navigation { flex-basis: 190px; width: 190px; }
+        }
+        .configuration-content table { width: 100%; border-collapse: collapse; }
+        .configuration-content table th { padding: 10px 14px; vertical-align: middle; }
+        .configuration-content table td { padding: 8px 14px; vertical-align: middle; }
+        .configuration-content table tbody tr { transition: background-color 120ms ease; }
+        .configuration-content table tbody tr:hover,
+        .configuration-content table tbody tr:focus-within { background-color: #eaf7fc; }
+        .configuration-content td:last-child .flex { flex-wrap: nowrap; align-items: center; }
+        .configuration-content td .config-action { white-space: nowrap; min-width: 74px; }
+        .configuration-navigation a:focus-visible { outline: 2px solid #1f7890; outline-offset: 2px; }
+
         .config-control {
             width: 100%;
             min-height: 36px;
@@ -163,23 +188,27 @@
         </div>
     @endif
 
-    <div class="grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)] lg:items-start">
-        <aside class="rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+    <div class="configuration-layout flex items-start gap-5">
+        <nav aria-label="Configuration sections" class="configuration-navigation w-[240px] shrink-0 rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+            <div class="border-b border-slate-100 px-3 pb-3 pt-2 text-xs font-bold uppercase tracking-wider text-slate-500">Settings</div>
             @foreach ($configurationTabs as $tab)
                 @php $isTabActive = $activeConfigurationTab === $tab['id']; @endphp
                 <a href="{{ route('configuration', ['tab' => $tab['id']]) }}"
-                   class="mb-1 block rounded-md px-4 py-3 transition {{ $isTabActive ? 'bg-[#eaf7fc] text-[#123348]' : 'text-slate-600 hover:bg-slate-50 hover:text-[#123348]' }}">
+                   title="{{ $tab['description'] }}"
+                   @if ($isTabActive) aria-current="page" @endif
+                   class="mt-1 block rounded-md px-3 py-3 transition {{ $isTabActive ? 'bg-[#eaf7fc] text-[#123348]' : 'text-slate-600 hover:bg-slate-50 hover:text-[#123348]' }}">
                     <span class="flex items-center justify-between gap-3">
                         <span class="text-sm font-bold">{{ $tab['label'] }}</span>
-                        <span class="rounded-full bg-white px-2 py-0.5 text-xs font-bold text-slate-500">{{ $tab['count'] }}</span>
+                        <span class="shrink-0 rounded-full bg-slate-50 px-2 py-0.5 text-xs font-bold text-slate-500">{{ $tab['count'] }}</span>
                     </span>
-                    <span class="mt-1 block text-xs leading-5 {{ $isTabActive ? 'text-[#1f5f74]' : 'text-slate-500' }}">{{ $tab['description'] }}</span>
                 </a>
             @endforeach
-        </aside>
+        </nav>
 
-        <div>
-            @if ($activeConfigurationTab === 'event-marketing')
+        <div class="configuration-content min-w-0 flex-1">
+            @if ($activeConfigurationTab === 'application-types')
+                @include('crm.configuration.application-types')
+            @elseif ($activeConfigurationTab === 'event-marketing')
                 @include('crm.configuration.event-marketing')
             @elseif ($activeConfigurationTab === 'events')
                 @include('crm.configuration.events')
@@ -300,8 +329,8 @@
                             <input name="name" value="{{ old('name') }}" maxlength="160" class="config-control mt-1 @error('name') is-invalid @enderror">
                         </label>
                         <label class="block">
-                            <span class="text-xs font-bold text-slate-600">Sort order</span>
-                            <input name="sort_order" value="{{ old('sort_order') }}" type="number" min="1" max="999" class="config-control mt-1 @error('sort_order') is-invalid @enderror">
+                            <span class="text-xs font-bold text-slate-600">Position</span>
+                            <input name="sort_order" value="{{ old('sort_order', $educationLevels->count() + 1) }}" type="number" min="1" max="999" class="config-control mt-1 @error('sort_order') is-invalid @enderror">
                         </label>
                         <label class="flex min-h-9 items-center gap-2 pb-1 text-sm font-bold text-slate-700">
                             <input type="hidden" name="active" value="0">
@@ -319,7 +348,7 @@
                     <div class="flex flex-col gap-2 border-b border-slate-200 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                             <h2 class="text-base font-bold text-[#101820]">Dropdown Options</h2>
-                            <p class="mt-1 text-xs text-slate-500">Inactive rows stay saved here but are hidden from dropdown fields.</p>
+                            <p class="mt-1 text-xs text-slate-500">Each position is unique. Changing a position shifts the other options automatically. Inactive options stay saved but are hidden from dropdowns.</p>
                         </div>
                         <div class="text-xs font-bold text-slate-500">{{ $educationLevels->count() }} total options</div>
                     </div>
@@ -342,7 +371,7 @@
                                     @endphp
                                     <tr>
                                         <td class="px-5 py-4 align-top">
-                                            <input form="{{ $updateFormId }}" name="sort_order" value="{{ $educationLevel->sort_order }}" type="number" min="1" max="999" class="config-control">
+                                            <input form="{{ $updateFormId }}" name="sort_order" aria-label="Position for {{ $educationLevel->name }}" value="{{ $educationLevel->sort_order }}" type="number" min="1" max="{{ max(1, $educationLevels->count()) }}" required class="config-control">
                                         </td>
                                         <td class="px-5 py-4 align-top">
                                             <input form="{{ $updateFormId }}" name="name" value="{{ $educationLevel->name }}" maxlength="160" class="config-control">

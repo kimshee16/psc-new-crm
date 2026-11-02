@@ -1,0 +1,15 @@
+.critical-date-range { position: relative; min-width: 245px; margin-top: 10px; }
+.critical-date-range .application-filter { margin-top: 0; padding-right: 53px; cursor: pointer; }
+.critical-range-calendar { position: absolute; right: 10px; top: 10px; color: #64748b; pointer-events: none; }
+.critical-range-clear { position: absolute; right: 29px; top: 4px; display: grid; place-items: center; width: 26px; height: 28px; border-radius: 4px; color: #64748b; cursor: pointer; }
+.critical-range-clear[hidden] { display: none; }
+.critical-range-clear:hover { background: #f1f5f9; color: #1f7890; }
+.critical-range-clear:focus-visible { outline: 2px solid #1f7890; }
+.critical-range-picker { font-family: inherit; border-radius: 8px; box-shadow: 0 8px 28px rgb(15 23 42 / 16%); }
+.critical-range-picker .flatpickr-day.selected,
+.critical-range-picker .flatpickr-day.startRange,
+.critical-range-picker .flatpickr-day.endRange,
+.critical-range-picker .flatpickr-day.selected:hover { background: #1f7890; border-color: #1f7890; color: white; }
+.critical-range-picker .flatpickr-day.inRange { background: #eaf7fc; border-color: #eaf7fc; box-shadow: -5px 0 0 #eaf7fc, 5px 0 0 #eaf7fc; }
+.critical-range-picker .flatpickr-day:focus-visible { outline: 2px solid #1f7890; outline-offset: -2px; }
+.critical-range-hint { margin: 0; border-top: 1px solid #e2e8f0; padding: 10px 14px; color: #64748b; font-size: 12px; line-height: 1.5; }

@@ -7,8 +7,9 @@ use App\Models\EducationLevel;
 use App\Models\Location;
 use App\Models\PscEvent;
 use App\Models\User;
-use App\Support\PSC\WebsiteLeadReferences;
+use App\Support\PSC\EducationLevelOrdering;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Support\PSC\WebsiteLeadReferences;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -51,12 +52,9 @@ class DatabaseSeeder extends Seeder
             ->update(['active' => false]);
 
         foreach ($educationLevels as $index => $educationLevel) {
-            EducationLevel::updateOrCreate(
-                ['name' => $educationLevel],
-                [
-                    'active' => true,
-                    'sort_order' => $index + 1,
-                ]
+            app(EducationLevelOrdering::class)->save(
+                EducationLevel::firstOrNew(['name' => $educationLevel]),
+                ['name' => $educationLevel, 'active' => true], $index + 1
             );
         }
 

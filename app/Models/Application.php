@@ -18,6 +18,11 @@ class Application extends Model
 
     public const PRIORITIES = ['L' => 'Low', 'M' => 'Medium', 'H' => 'High'];
 
+    public function statusOptions(): array
+    {
+        return $this->category === 'Visa' ? [...self::STATUSES, 'Granted'] : self::STATUSES;
+    }
+
     protected $attributes = ['status' => 'Not Started', 'priority' => 'M'];
 
     protected $fillable = [
@@ -53,6 +58,26 @@ class Application extends Model
     public function linkedApplication(): BelongsTo
     {
         return $this->belongsTo(self::class, 'linked_application_id');
+    }
+
+    public function scopeLinkedTo(Builder $query, Application $application): void
+    {
+        // Include both directions of PSC-33 links without rewriting existing records.
+        $query->where('applications.id', '!=', $application->id)
+            ->where(function (Builder $linked) use ($application) {
+                $linked->where('applications.linked_application_id', $application->id)
+                    ->orWhere('applications.id', $application->linked_application_id)
+                    ->orWhereExists(function ($links) use ($application) {
+                        $links->selectRaw('1')->from('application_links')
+                            ->where(function ($pair) use ($application) {
+                                $pair->where('application_links.application_id', $application->id)
+                                    ->whereColumn('application_links.linked_application_id', 'applications.id');
+                            })->orWhere(function ($pair) use ($application) {
+                                $pair->where('application_links.linked_application_id', $application->id)
+                                    ->whereColumn('application_links.application_id', 'applications.id');
+                            });
+                    });
+            });
     }
 
     public function sourceLead(): BelongsTo

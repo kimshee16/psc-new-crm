@@ -31,6 +31,7 @@ class ApplicationList
             ->leftJoin('users as secondary_staff', 'secondary_staff.id', '=', 'applications.secondary_counsellor_id')
             ->leftJoin('users as agent', 'agent.id', '=', 'applications.migration_agent_id')
             ->select('applications.id', 'applications.client_id', 'applications.category', 'applications.critical_date', 'applications.priority', 'applications.status', 'applications.updated_at')
+            ->addSelect('applications.organisation_id', 'clients.client_id as client_reference')
             ->selectRaw("COALESCE(organisations.name, $name) AS client_name")
             ->selectRaw("COALESCE(primary_staff.name, '') AS primary_counsellor, COALESCE(secondary_staff.name, '') AS secondary_counsellor, COALESCE(agent.name, '') AS migration_agent")
             ->selectRaw("CASE applications.category

@@ -120,13 +120,12 @@ class ApplicationSummary
         $staffIds = $this->eligibleStaff($application)->pluck('id')->all();
 
         return [
-            'status' => ['required', Rule::in(Application::STATUSES)],
+            'status' => ['required', Rule::in($application->exists ? $application->statusOptions() : Application::STATUSES)],
             'priority' => ['required', Rule::in(array_keys(Application::PRIORITIES))],
             'critical_date' => ['nullable', 'date_format:Y-m-d'],
             'primary_counsellor_id' => ['required', 'integer', Rule::in($staffIds)],
             'secondary_counsellor_id' => ['nullable', 'integer', Rule::in($staffIds)],
             'migration_agent_id' => [$application->category === 'Visa' ? 'required' : 'nullable', 'integer', Rule::in($staffIds)],
-            'notes' => ['nullable', 'string', 'max:60000'],
             'assessment_body' => $application->category === 'Assessment'
                 ? ['required', 'string', 'max:255', Rule::in($this->options($application, 'assessment_body'))] : ['missing'],
             'visa_subclass' => $application->category === 'Visa'

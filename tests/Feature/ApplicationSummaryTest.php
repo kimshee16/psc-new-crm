@@ -52,7 +52,7 @@ class ApplicationSummaryTest extends TestCase
             ]);
             $response = $this->actingAs($user)->get(route('applications.show', $application));
             $response->assertOk()->assertSee('Summary')->assertSee($label)->assertSee('Date Created')
-                ->assertSee('Last Modified')->assertSee('View / edit notes')
+                ->assertSee('Last Modified')->assertSee('Application Notes')->assertSee('Add Note')
                 ->assertSee('href="'.route('clients.show', $application->client->client_id).'"', false)
                 ->assertDontSee('name="category"', false)->assertDontSee('name="client_id"', false);
             foreach (['Visa' => 'visa_subclass', 'Assessment' => 'assessment_body'] as $type => $field) {
@@ -102,7 +102,7 @@ class ApplicationSummaryTest extends TestCase
         $user = User::factory()->create();
         $other = User::factory()->create();
         $this->travelTo(now()->startOfSecond());
-        $application = $this->application($user);
+        $application = $this->application($user, ['notes' => "Long notes\n<script>alert('unsafe')</script>"]);
         $created = $application->created_at->toDateTimeString();
         $this->travel(2)->minutes();
         $this->actingAs($user)->patch(route('applications.update', $application), $this->fields($application, [
@@ -117,13 +117,14 @@ class ApplicationSummaryTest extends TestCase
         $this->assertSame('H', $application->priority);
         $this->assertSame('2027-02-28', $application->critical_date->format('Y-m-d'));
         $this->assertSame($other->id, $application->secondary_counsellor_id);
+        $this->assertSame("Long notes\n<script>alert('unsafe')</script>", $application->notes);
         $this->get(route('applications.show', $application))->assertOk()->assertDontSee("<script>alert('unsafe')</script>", false)
             ->assertSee('&lt;script&gt;', false);
         $this->patch(route('applications.update', $application), $this->fields($application, [
             'critical_date' => '', 'secondary_counsellor_id' => '', 'migration_agent_id' => '', 'notes' => '',
         ]))->assertSessionHasNoErrors();
         $application->refresh();
-        foreach (['critical_date', 'secondary_counsellor_id', 'migration_agent_id', 'notes'] as $field) {
+        foreach (['critical_date', 'secondary_counsellor_id', 'migration_agent_id'] as $field) {
             $this->assertNull($application->$field);
         }
     }
@@ -208,7 +209,7 @@ class ApplicationSummaryTest extends TestCase
         $this->actingAs($user)->from($url)->patch(route('applications.update', $application), $this->fields($application, [
             'priority' => ['invalid'], 'critical_date' => ['invalid'], 'notes' => ['invalid'],
             'status' => 'Pending Decision',
-        ]))->assertRedirect($url)->assertSessionHasErrors(['priority', 'critical_date', 'notes']);
+        ]))->assertRedirect($url)->assertSessionHasErrors(['priority', 'critical_date']);
         $this->get($url)->assertOk()->assertSee('The summary could not be saved.')
             ->assertSee('value="Pending Decision" selected', false);
         $this->assertSame('Not Started', $application->fresh()->status);

@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\ApplicationsController;
+use App\Http\Controllers\ApplicationLinksController;
+use App\Http\Controllers\ApplicationTypeConfigurationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientsController;
 use App\Http\Controllers\ConfigurationController;
@@ -12,6 +14,7 @@ use App\Http\Controllers\EventRegistrationFormController;
 use App\Http\Controllers\HolidaysController;
 use App\Http\Controllers\LeadsController;
 use App\Http\Controllers\MyOfficesController;
+use App\Http\Controllers\RecordNotesController;
 use App\Http\Controllers\UserConfigurationController;
 use App\Http\Controllers\UserInvitationController;
 use App\Http\Controllers\WebsiteLeadFormController;
@@ -60,6 +63,10 @@ $registerRoutes = function () {
         ->name('logout');
 
     Route::middleware(['auth', 'active-user'])->group(function () {
+        Route::post('/{module}/{recordId}/notes', [RecordNotesController::class, 'save'])
+            ->whereIn('module', ['clients', 'leads', 'applications'])->whereNumber('recordId')->name('notes.store');
+        Route::match(['patch', 'delete'], '/{module}/{recordId}/notes/{noteId}', [RecordNotesController::class, 'save'])
+            ->whereIn('module', ['clients', 'leads', 'applications'])->whereNumber('recordId')->name('notes.update');
         Route::get('/', function () {
             return view('crm.home');
         })->name('home');
@@ -78,6 +85,8 @@ $registerRoutes = function () {
 
         Route::get('/applications', [ApplicationsController::class, 'index'])->name('applications');
         Route::get('/applications/export', [ApplicationsController::class, 'export'])->name('applications.export');
+        Route::get('/applications/{application}/linked-items', [ApplicationLinksController::class, 'edit'])->whereNumber('application')->name('applications.links.edit');
+        Route::post('/applications/{application}/linked-items', [ApplicationLinksController::class, 'update'])->whereNumber('application')->name('applications.links.update');
         Route::get('/applications/{application}', [ApplicationsController::class, 'show'])->whereNumber('application')->name('applications.show');
         Route::patch('/applications/{application}', [ApplicationsController::class, 'update'])->whereNumber('application')->name('applications.update');
         Route::get('/organisations/{organisation}', [ApplicationsController::class, 'organisation'])->whereNumber('organisation')->name('organisations.show');
@@ -109,6 +118,7 @@ $registerRoutes = function () {
         Route::patch('/holidays/{holiday}/cancel', [HolidaysController::class, 'cancel'])->name('holidays.cancel');
 
         Route::get('/configuration', [ConfigurationController::class, 'index'])->name('configuration');
+        Route::patch('/configuration/application-types', [ApplicationTypeConfigurationController::class, 'update'])->name('configuration.application-types.update');
         Route::post('/configuration/event-marketing', [EventReferralConfigurationController::class, 'store'])->name('configuration.event-marketing.store');
         Route::patch('/configuration/event-marketing/{eventReferral}', [EventReferralConfigurationController::class, 'update'])->name('configuration.event-marketing.update');
         Route::post('/configuration/events', [EventConfigurationController::class, 'store'])->name('configuration.events.store');

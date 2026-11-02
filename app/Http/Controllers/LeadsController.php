@@ -19,6 +19,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LeadsController extends Controller
 {
+    public function noteRecord(string $leadId, User $user): Lead
+    {
+        return $this->visibleLeadQuery($user)->where('lead_id', $leadId)->firstOrFail();
+    }
+
     private const PER_PAGE_OPTIONS = [10, 20, 50];
 
     /**
@@ -134,7 +139,6 @@ class LeadsController extends Controller
             'highest_education_level' => (string) ($validated['highest_education_level'] ?? ''),
             'secondary_counsellor' => (string) ($validated['secondary_counsellor'] ?? ''),
             'migration_agent' => (string) ($validated['migration_agent'] ?? ''),
-            'notes' => (string) ($validated['notes'] ?? ''),
         ]);
         $lead->save();
 
@@ -169,6 +173,8 @@ class LeadsController extends Controller
         return view('crm.leads.show', [
             'title' => 'PSC CRM - Lead '.$lead->lead_id,
             'lead' => $this->leadRecord($lead),
+            'storedNotes' => $lead->notes,
+            'originalEnquiry' => $lead->enquiry,
             'applicationCreation' => app(ApplicationCreation::class)->viewData($request->user()),
             'statuses' => $this->statuses(),
             'priorities' => $this->priorities(),

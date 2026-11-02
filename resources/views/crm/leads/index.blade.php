@@ -100,7 +100,7 @@
                                 <span data-sort-label="days_in_queue" class="sr-only">not sorted</span>
                             </button>
                         </th>
-                        <th class="min-w-32 px-5 py-3 text-right font-bold">Actions</th>
+                        <th class="min-w-32 px-5 py-3 font-bold">Lead ID</th>
                     </tr>
                 </thead>
                 <tbody id="leads-table-body" class="divide-y divide-slate-100"></tbody>
@@ -225,14 +225,9 @@
                             ${adminCells}
                             <td class="px-5 py-4 text-slate-600">${escapeHtml(lead.modified_at)}</td>
                             <td class="px-5 py-4"><span class="leads-queue-badge" data-level="${escapeHtml(lead.queue_age_level)}">${escapeHtml(lead.days_in_queue_label)}</span></td>
-                            <td class="px-5 py-4 text-right">
-                                <div class="inline-flex items-center justify-end gap-2">
-                                    ${duplicateFlag}
-                                    <a href="${showUrl}" title="Open lead" class="inline-flex min-h-9 items-center justify-center rounded-md border border-[#b9dce4] bg-white px-3 py-2 text-sm font-medium text-[#1f7890] transition hover:border-[#1f7890]">
-                                        {!! payroll_icon('edit', 'h-4 w-4') !!}
-                                        <span class="sr-only">Open lead</span>
-                                    </a>
-                                </div>
+                            <td class="px-5 py-4">
+                                <a href="${showUrl}" class="font-semibold text-[#1f7890] underline underline-offset-2">${escapeHtml(lead.lead_id)}</a>
+                                ${duplicateFlag}
                             </td>
                         </tr>
                     `;

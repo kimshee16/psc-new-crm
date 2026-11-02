@@ -254,65 +254,7 @@
             font-weight: 800;
         }
 
-        .client-notes-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 16px;
-        }
 
-        .client-note {
-            min-height: 158px;
-            border: 1px solid #eadf98;
-            border-radius: 6px;
-            background: #fff7bd;
-            box-shadow: 0 10px 18px rgb(15 23 42 / 8%);
-            padding: 14px;
-        }
-
-        .client-note:nth-child(3n + 2) {
-            background: #dff7ef;
-            border-color: #a8dfca;
-        }
-
-        .client-note:nth-child(3n) {
-            background: #e8f1ff;
-            border-color: #bfd2f2;
-        }
-
-        .client-note-text {
-            min-height: 96px;
-            resize: vertical;
-            border: 0;
-            background: transparent;
-            padding: 0;
-            color: #334155;
-            font-size: 13px;
-            line-height: 1.55;
-            outline: none;
-        }
-
-        .client-note-text:disabled {
-            resize: none;
-            color: #334155;
-            opacity: 1;
-        }
-
-        .client-note-meta {
-            margin-bottom: 10px;
-            color: #64748b;
-            font-size: 11px;
-            font-weight: 700;
-            line-height: 1.4;
-        }
-
-        .client-note-empty {
-            border: 1px dashed #b8c4d4;
-            border-radius: 6px;
-            background: #fff;
-            padding: 18px;
-            color: #64748b;
-            font-size: 13px;
-        }
 
         .client-profile-modal {
             position: fixed;
@@ -665,89 +607,9 @@
             </div>
         </section>
 
-        <section class="mt-11">
-            @php
-                $submittedNoteBodies = old('note_bodies');
-                $submittedNoteAuthors = old('note_authors', []);
-                $submittedNoteDatetimes = old('note_datetimes', []);
-                $currentNoteAuthor = trim(auth()->user()?->name ?? '') !== '' ? auth()->user()->name : auth()->user()?->email ?? 'Current user';
-                $formatNoteDatetime = function (string $datetime): string {
-                    if ($datetime === '' || $datetime === 'Pending save' || $datetime === 'Date not recorded') {
-                        return $datetime !== '' ? $datetime : 'Date not recorded';
-                    }
-
-                    try {
-                        return \Illuminate\Support\Carbon::parse($datetime)->locale('en')->isoFormat('MMMM D, YYYY [at] h:mm A');
-                    } catch (\Throwable) {
-                        return $datetime;
-                    }
-                };
-
-                if (is_array($submittedNoteBodies)) {
-                    $noteRecords = [];
-                    foreach (array_values($submittedNoteBodies) as $index => $noteBody) {
-                        $body = trim(is_array($noteBody) ? (string) ($noteBody['body'] ?? '') : (string) $noteBody);
-                        if ($body === '') {
-                            continue;
-                        }
-                        $noteRecords[] = [
-                            'body' => $body,
-                            'author' => trim((string) ($submittedNoteAuthors[$index] ?? '')) ?: $currentNoteAuthor,
-                            'datetime' => trim((string) ($submittedNoteDatetimes[$index] ?? '')) ?: now()->format('Y-m-d H:i:s'),
-                            'datetime_display' => $formatNoteDatetime(trim((string) ($submittedNoteDatetimes[$index] ?? now()->format('Y-m-d H:i:s')))),
-                        ];
-                    }
-                } else {
-                    $noteRecords = array_values(array_filter(array_map(function ($note) use ($currentNoteAuthor, $formatNoteDatetime) {
-                        $body = trim(is_array($note) ? (string) ($note['body'] ?? '') : (string) $note);
-                        if ($body === '') {
-                            return null;
-                        }
-                        return [
-                            'body' => $body,
-                            'author' => trim(is_array($note) ? (string) ($note['author'] ?? '') : '') ?: $currentNoteAuthor,
-                            'datetime' => trim(is_array($note) ? (string) ($note['datetime'] ?? '') : '') ?: 'Date not recorded',
-                            'datetime_display' => trim(is_array($note) ? (string) ($note['datetime_display'] ?? '') : '') ?: $formatNoteDatetime(trim(is_array($note) ? (string) ($note['datetime'] ?? '') : '')),
-                        ];
-                    }, $client['notes'])));
-                }
-                $canEditNotes = $isEditing && $canManageClientNotes;
-            @endphp
-
-            <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h2 class="text-lg font-extrabold text-[#101820]">Client Notes</h2>
-                @if ($canEditNotes)
-                    <button id="client-add-note" type="button" class="client-profile-action client-profile-primary">
-                        Add Note
-                    </button>
-                @endif
-            </div>
-            <div id="client-notes-list" class="client-notes-grid">
-                @foreach ($noteRecords as $note)
-                    <article class="client-note">
-                        <div class="mb-3 flex items-center justify-between gap-3">
-                            <div class="text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500">Note</div>
-                            @if ($canEditNotes)
-                                <button type="button" class="client-delete-note text-rose-600 transition hover:text-rose-700" title="Delete note">
-                                    {!! payroll_icon('trash', 'h-4 w-4') !!}
-                                    <span class="sr-only">Delete note</span>
-                                </button>
-                            @endif
-                        </div>
-                        <div class="client-note-meta">Added by {{ $note['author'] }}<br>{{ $note['datetime_display'] }}</div>
-                        @if ($canEditNotes)
-                            <input type="hidden" name="note_authors[]" value="{{ $note['author'] }}">
-                            <input type="hidden" name="note_datetimes[]" value="{{ $note['datetime'] }}">
-                        @endif
-                        <textarea name="note_bodies[]" rows="4" class="client-note-text w-full @error('note_bodies.*') is-invalid @enderror" @disabled(! $canEditNotes)>{{ $note['body'] }}</textarea>
-                    </article>
-                @endforeach
-            </div>
-            <div id="client-notes-empty" @class(['client-note-empty', 'mt-2', 'hidden' => $noteRecords !== []])>
-                No client notes yet.
-            </div>
-        </section>
     </form>
+
+    <x-record-notes :stored="$storedNotes" module="clients" :record-id="$client['client_id']" :editable="$hasStoredClient && $canManageClientNotes" />
 
     <x-applications.create-modal :action="route('clients.applications.create', $client['client_id'])" trigger="client-create-application-open" :configuration="$applicationCreation" />
 
@@ -794,10 +656,6 @@
             const confirmDiscard = document.getElementById('client-confirm-discard');
             const dob = document.getElementById('client-dob');
             const age = document.getElementById('client-age');
-            const addNote = document.getElementById('client-add-note');
-            const notesList = document.getElementById('client-notes-list');
-            const notesEmpty = document.getElementById('client-notes-empty');
-            const currentNoteAuthor = @json($currentNoteAuthor);
             const photoEdit = document.getElementById('client-photo-edit');
             const photoDelete = document.getElementById('client-photo-delete');
             const photoInput = document.getElementById('client-passport-photo');
@@ -811,43 +669,6 @@
             let cleanState = new FormData(form);
             let isLeavingByAction = false;
             let previewObjectUrl = null;
-            const syncNotesEmptyState = () => {
-                notesEmpty?.classList.toggle('hidden', notesList.children.length > 0);
-            };
-            const escapeHtml = (value) => String(value)
-                .replaceAll('&', '&amp;')
-                .replaceAll('<', '&lt;')
-                .replaceAll('>', '&gt;')
-                .replaceAll('"', '&quot;')
-                .replaceAll("'", '&#039;');
-            const noteTimestamp = () => {
-                const now = new Date();
-                const pad = (value) => String(value).padStart(2, '0');
-
-                return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-            };
-            const noteTemplate = () => {
-                const datetime = noteTimestamp();
-                const author = escapeHtml(currentNoteAuthor);
-                const note = document.createElement('article');
-                note.className = 'client-note';
-                note.innerHTML = `
-                    <div class="mb-3 flex items-center justify-between gap-3">
-                        <div class="text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500">Note</div>
-                        <button type="button" class="client-delete-note text-rose-600 transition hover:text-rose-700" title="Delete note">
-                            {!! payroll_icon('trash', 'h-4 w-4') !!}
-                            <span class="sr-only">Delete note</span>
-                        </button>
-                    </div>
-                    <div class="client-note-meta">Added by ${author}<br>${datetime}</div>
-                    <input type="hidden" name="note_authors[]" value="${author}">
-                    <input type="hidden" name="note_datetimes[]" value="${datetime}">
-                    <textarea name="note_bodies[]" rows="4" class="client-note-text w-full"></textarea>
-                `;
-
-                return note;
-            };
-
             const serialise = (data) => Array.from(data.entries())
                 .filter(([key]) => ! ['_token', '_method'].includes(key))
                 .map(([key, value]) => {
@@ -949,22 +770,6 @@
             passportLightbox?.addEventListener('click', (event) => {
                 if (event.target === passportLightbox) closePassportLightbox();
             });
-            addNote?.addEventListener('click', () => {
-                const note = noteTemplate();
-                notesList.appendChild(note);
-                syncNotesEmptyState();
-                note.querySelector('textarea')?.focus();
-                syncDirtyState();
-            });
-            notesList?.addEventListener('click', (event) => {
-                const deleteButton = event.target.closest('.client-delete-note');
-
-                if (! deleteButton) return;
-
-                deleteButton.closest('.client-note')?.remove();
-                syncNotesEmptyState();
-                syncDirtyState();
-            });
             photoEdit?.addEventListener('click', () => photoInput?.click());
             photoInput?.addEventListener('change', () => {
                 const file = photoInput.files?.[0];
@@ -994,7 +799,6 @@
             });
 
             calculateAge();
-            syncNotesEmptyState();
             syncDirtyState();
         })();
     </script>

@@ -92,7 +92,6 @@
                             </div>
                         </th>
                         <th class="min-w-28 px-5 py-3 font-bold">Tag</th>
-                        <th class="min-w-28 px-5 py-3 text-right font-bold">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="clients-table-body" class="divide-y divide-slate-100"></tbody>
@@ -225,19 +224,14 @@
 
                     return `
                         <tr>
-                            <td class="px-5 py-4 font-bold text-[#101820]">CL-${escapeHtml(client.client_id)}</td>
-                            <td class="px-5 py-4 text-slate-700">${escapeHtml(client.first_name)}</td>
+                            <td class="px-5 py-4 font-bold text-[#101820]"><a class="text-[#1f7890] underline underline-offset-2" href="${showUrl}">CL-${escapeHtml(client.client_id)}</a></td>
+                            <td class="px-5 py-4 text-slate-700"><a class="text-[#1f7890] underline underline-offset-2" href="${showUrl}">${escapeHtml(client.first_name)}</a></td>
                             <td class="px-5 py-4 text-slate-700">${escapeHtml(client.middle_name)}</td>
-                            <td class="px-5 py-4 font-semibold text-[#101820]">${escapeHtml(client.surname)}</td>
+                            <td class="px-5 py-4 font-semibold text-[#101820]"><a class="text-[#1f7890] underline underline-offset-2" href="${showUrl}">${escapeHtml(client.surname)}</a></td>
                             <td class="px-5 py-4 text-slate-600">${escapeHtml(client.mobile)}</td>
                             <td class="px-5 py-4"><span class="rounded-full px-3 py-1 text-xs font-bold ${statusClasses(client.status)}">${escapeHtml(client.status)}</span></td>
                             <td class="px-5 py-4"><span class="rounded-md bg-[#eef8fa] px-2 py-1 text-xs font-bold text-[#1f7890]">${escapeHtml(client.tag)}</span></td>
-                            <td class="px-5 py-4 text-right">
-                                <a href="${showUrl}" title="Open client record" class="inline-flex min-h-9 items-center justify-center rounded-md border border-[#b9dce4] bg-white px-3 py-2 text-sm font-medium text-[#1f7890] transition hover:border-[#1f7890]">
-                                    {!! payroll_icon('eye', 'h-4 w-4') !!}
-                                    <span class="sr-only">Open client record</span>
-                                </a>
-                            </td>
+
                         </tr>
                     `;
                 }).join('');

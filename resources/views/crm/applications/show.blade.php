@@ -19,11 +19,9 @@
             @elseif ($application->category === 'ART Appeal')
                 <p class="mt-3 text-sm">Subclass: {{ $application->visa_subclass ?: 'Not set' }}</p>
             @endif
-            @if ($linkedApplication)
-                <h3 class="mt-6 font-semibold">Linked application</h3>
-                <a class="mt-2 block text-sm text-[#1f7890] underline" href="{{ route('applications.show', $linkedApplication) }}">{{ $linkedApplication->type_label }} — Application ID {{ $linkedApplication->id }}</a>
-                @if ($linkedApplication->visa_subclass)<p class="mt-2 text-sm text-slate-600">{{ $linkedApplication->visa_subclass }}</p>@endif
-            @endif
         </section>
     </div>
+    <x-applications.linked-items :application="$application" :items="$linkedItems" />
+    <x-applications.tabs :application="$application" :tabs="$applicationTabs" :active-tab="$activeApplicationTab" />
+    <x-record-notes :stored="$application->notes" module="applications" :record-id="$application->id" :editable="true" />
 @endsection

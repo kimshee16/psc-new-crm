@@ -9,6 +9,7 @@ use App\Models\Lead;
 use App\Models\Office;
 use App\Models\User;
 use App\Support\PSC\ApplicationCreation;
+use App\Support\PSC\VisaGrants;
 use App\Support\PSC\WebsiteLeadReferences;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,12 +17,21 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ClientsController extends Controller
 {
+    public function noteRecord(string $clientId, User $user): Client
+    {
+        $profile = $this->clientProfileFor($clientId, $user);
+        abort_unless($this->canManageClientNotes($user, $profile), 403);
+
+        return Client::query()->where('client_id', $clientId)->firstOrFail();
+    }
+
     private const PER_PAGE_OPTIONS = [10, 20, 50];
 
     private const EDIT_LOCK_MINUTES = 15;
@@ -110,7 +120,7 @@ class ClientsController extends Controller
             'overseas_address' => ['nullable', 'string', 'max:1200'],
             'admin_office' => ['required', 'string', 'max:80'],
             'client_status' => ['required', 'string', 'max:40'],
-            'current_visa' => ['nullable', 'string', 'max:120'],
+            'current_visa' => ['nullable', 'string', 'max:255'],
             'visa_expiry' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:4000'],
             'note_bodies' => ['nullable', 'array', 'max:50'],
@@ -183,13 +193,15 @@ class ClientsController extends Controller
             'states' => $this->states(),
             'offices' => $this->offices(),
             'clientStatuses' => $this->statuses(),
-            'visas' => $this->visas(),
+            'visas' => $this->visas($client['current_visa']),
             'phoneCountryCodes' => WebsiteLeadReferences::phoneCountryCodes(),
             'prospectiveServices' => $this->prospectiveServices(),
             'isEditing' => $isEditing,
             'isLockedByAnother' => $editLock !== null && ! $ownsLock,
             'editLock' => $editLock,
             'canManageClientNotes' => $this->canManageClientNotes($request->user(), $client),
+            'storedNotes' => Client::query()->where('client_id', $clientId)->value('notes'),
+            'hasStoredClient' => Client::query()->where('client_id', $clientId)->exists(),
         ]);
     }
 
@@ -235,7 +247,7 @@ class ClientsController extends Controller
 
         $user = $request->user();
         $existing = $this->clientListRecordFor($clientId, $user);
-        $validated = $request->validate($this->clientRecordRules($existing['nationality'] ?? null), [], $this->clientRecordAttributes());
+        $validated = $request->validate($this->clientRecordRules($existing['nationality'] ?? null, $existing['current_visa'] ?? null), [], $this->clientRecordAttributes());
         $existingPhotoPath = (string) ($existing['passport_photo_path'] ?? '');
         $passportPhotoPath = $this->passportPhotoPathFrom($request, $existingPhotoPath);
 
@@ -535,9 +547,12 @@ class ClientsController extends Controller
     /**
      * @return list<string>
      */
-    private function visas(): array
+    private function visas(?string $currentVisa = null): array
     {
-        return ['Student visa', 'Visitor visa', 'Temporary Graduate visa', 'Partner visa', 'Skilled visa', 'Bridging visa', 'Permanent resident'];
+        return array_values(array_unique(array_filter([
+            'Student visa', 'Visitor visa', 'Temporary Graduate visa', 'Partner visa', 'Skilled visa', 'Bridging visa', 'Permanent resident',
+            ...config('applications.creation_options.visa_subclass', []), $currentVisa,
+        ])));
     }
 
     /**
@@ -848,9 +863,6 @@ class ClientsController extends Controller
             'current_visa' => (string) ($validated['current_visa'] ?? ''),
             'visa_expiry' => $validated['visa_expiry'] ?? null,
             'passport_photo_path' => $passportPhotoPath,
-            'notes' => $this->canManageClientNotes($user, $existing ?? [])
-                ? $this->notesToStorage($validated, $user)
-                : $this->notesToStorage(['note_bodies' => $existing['notes'] ?? []], $user),
             'primary_counsellor' => (string) ($existing['primary_counsellor'] ?? $this->assigneeName($user)),
             'secondary_counsellor' => (string) ($existing['secondary_counsellor'] ?? ''),
             'migration_agent' => (string) ($existing['migration_agent'] ?? ''),
@@ -874,6 +886,11 @@ class ClientsController extends Controller
      */
     private function storedClientToArray(Client $client): array
     {
+        // Catch up effective grants when a client is viewed, even between scheduler runs.
+        if (app(VisaGrants::class)->applyForClient($client->id)) {
+            $client->refresh();
+        }
+
         return [
             'source' => 'database',
             'id' => $client->getKey(),
@@ -1100,7 +1117,7 @@ class ClientsController extends Controller
     /**
      * @return array<string, list<mixed>>
      */
-    private function clientRecordRules(?string $currentNationality = null): array
+    private function clientRecordRules(?string $currentNationality = null, ?string $currentVisa = null): array
     {
         return [
             'first_name' => ['required', 'string', 'max:80'],
@@ -1119,7 +1136,7 @@ class ClientsController extends Controller
             'overseas_address' => ['nullable', 'string', 'max:1200'],
             'admin_office' => ['nullable', 'string', Rule::in($this->offices())],
             'client_status' => ['required', 'string', Rule::in($this->statuses())],
-            'current_visa' => ['nullable', 'string', Rule::in($this->visas())],
+            'current_visa' => ['nullable', 'string', 'max:255', Rule::in($this->visas($currentVisa))],
             'visa_expiry' => ['nullable', 'date'],
             'passport_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
             'delete_passport_photo' => ['nullable', 'boolean'],
@@ -1364,43 +1381,20 @@ class ClientsController extends Controller
      */
     private function notesToStorage(array $input, User $user): string
     {
-        $noteBodies = $input['note_bodies'] ?? null;
-        $noteAuthors = $input['note_authors'] ?? [];
-        $noteDatetimes = $input['note_datetimes'] ?? [];
-
-        if (is_array($noteBodies)) {
-            $notes = [];
-
-            foreach (array_values($noteBodies) as $index => $note) {
-                $existingNote = is_array($note) ? $note : [];
-                $body = trim(is_array($note) ? (string) ($note['body'] ?? '') : (string) $note);
-
-                if ($body === '') {
-                    continue;
-                }
-
-                $author = trim((string) ($noteAuthors[$index] ?? $existingNote['author'] ?? ''));
-                $datetime = trim((string) ($noteDatetimes[$index] ?? $existingNote['datetime'] ?? ''));
-
-                $notes[] = [
-                    'body' => $body,
-                    'author' => $author !== '' ? $author : $this->assigneeName($user),
-                    'datetime' => $datetime !== '' ? $datetime : now()->format('Y-m-d H:i:s'),
-                ];
+        $bodies = $input['note_bodies'] ?? [(string) ($input['notes'] ?? '')];
+        $notes = [];
+        foreach ($bodies as $body) {
+            if (trim((string) $body) === '') {
+                continue;
             }
-
-            return $notes === [] ? '' : json_encode($notes, JSON_THROW_ON_ERROR);
+            $notes[] = [
+                'id' => (string) Str::uuid(),
+                'body' => trim($body), 'author' => $this->assigneeName($user),
+                'user_id' => $user->id, 'datetime' => now()->toIso8601String(),
+            ];
         }
 
-        $legacyNotes = array_map(fn (string $note): array => [
-            'body' => $note,
-            'author' => $this->assigneeName($user),
-            'datetime' => now()->format('Y-m-d H:i:s'),
-        ], preg_split("/\R{2,}/", trim((string) ($input['notes'] ?? ''))) ?: []);
-
-        $legacyNotes = array_values(array_filter($legacyNotes, fn (array $note): bool => trim($note['body']) !== ''));
-
-        return $legacyNotes === [] ? '' : json_encode($legacyNotes, JSON_THROW_ON_ERROR);
+        return $notes === [] ? '' : json_encode($notes, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
     }
 
     /**

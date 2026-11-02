@@ -1,6 +1,7 @@
 @extends('layouts.payroll')
 
 @section('content')
+    @vite('resources/js/critical-date-range.js')
     <style>
         .applications-table { width: 100%; border-collapse: collapse; }
         .applications-table th { min-width: 150px; padding: 14px 12px; vertical-align: top; }
@@ -15,6 +16,7 @@
         .applications-table tbody tr[data-tone="amber"]:nth-child(even) { background: #fef3c7; }
         .applications-table tr[data-tone="red"] td:first-child { box-shadow: inset 3px 0 #e11d48; }
         .applications-table tr[data-tone="amber"] td:first-child { box-shadow: inset 3px 0 #d97706; }
+        .applications-table tbody tr:hover { outline: 2px solid #a5d5e1; outline-offset: -2px; }
         .application-filter { display: block; width: 100%; min-height: 36px; margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 5px; padding: 6px 8px; background: white; color: #334155; font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: normal; }
         .application-filter:focus-visible, .application-sort:focus-visible { outline: 2px solid #1f7890; outline-offset: 2px; }
         .application-sort { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; text-align: left; }
@@ -28,7 +30,7 @@
         <header class="mb-7 flex flex-wrap items-start justify-between gap-4">
             <div>
                 <h1 class="text-[26px] font-bold leading-tight text-[#101820]">Applications</h1>
-                <p class="mt-2 text-sm text-slate-600">Active applications assigned to you.</p>
+                <p class="mt-2 text-sm text-slate-600">Active applications assigned to you. Filters work together; each application has one Critical Date.</p>
             </div>
             <div class="flex flex-wrap gap-2">
                 <button type="submit" class="inline-flex min-h-10 items-center gap-2 rounded-md bg-[#1f7890] px-4 py-2 text-sm font-bold text-white hover:bg-[#17657a]">{!! payroll_icon('filter') !!} Apply filters</button>
@@ -67,10 +69,7 @@
                                         {{ $label }} <span aria-hidden="true">{{ $isSorted ? ($direction === 'asc' ? '↑' : '↓') : '↕' }}</span>
                                     </a>
                                     @if ($column === 'critical_date')
-                                        <label class="sr-only" for="date-from">Critical date from</label>
-                                        <input id="date-from" type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" class="application-filter" aria-label="Critical date from">
-                                        <label class="sr-only" for="date-to">Critical date to</label>
-                                        <input id="date-to" type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" class="application-filter" aria-label="Critical date to">
+                                        <x-applications.critical-date-range :from="$filters['date_from'] ?? ''" :to="$filters['date_to'] ?? ''" />
                                     @elseif ($column === 'priority')
                                         <details class="mt-2 rounded-md border border-slate-300 bg-white p-2 font-normal">
                                             <summary class="cursor-pointer whitespace-nowrap" aria-label="Filter priorities">{{ empty($filters['priority']) ? 'All' : implode(', ', $filters['priority']) }}</summary>
@@ -86,7 +85,6 @@
                                     @endif
                                 </th>
                             @endforeach
-                            <th scope="col"><span class="inline-flex min-h-[30px] items-center">Action</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -95,7 +93,11 @@
                             <tr data-tone="{{ $urgency['tone'] }}">
                                 @foreach ($columns as $column => $label)
                                     <td>
-                                        @if ($column === 'critical_date')
+                                        @if ($column === 'id')
+                                            <a class="font-semibold text-[#1f7890] underline underline-offset-2" href="{{ route('applications.show', $application->id) }}" aria-label="Open application {{ $application->id }}">{{ $application->id }}</a>
+                                        @elseif ($column === 'client_name' && ($application->client_reference || $application->organisation_id))
+                                            <a class="font-semibold text-[#1f7890] underline underline-offset-2" href="{{ $application->organisation_id ? route('organisations.show', $application->organisation_id) : route('clients.show', $application->client_reference) }}">{{ $application->client_name }}</a>
+                                        @elseif ($column === 'critical_date')
                                             <span class="whitespace-nowrap font-medium">{{ $application->critical_date ? \Illuminate\Support\Carbon::parse($application->critical_date)->format('d/m/Y') : '—' }}</span>
                                             <span class="mt-1 block text-xs {{ $urgency['tone'] === 'red' ? 'font-semibold text-red-700' : 'text-slate-500' }}">{{ $urgency['label'] }}</span>
                                         @elseif ($column === 'priority')
@@ -107,14 +109,10 @@
                                         @endif
                                     </td>
                                 @endforeach
-                                <td>
-                                    <a href="{{ route('applications.show', $application->id) }}" target="_blank" rel="noopener noreferrer" aria-label="Open application {{ $application->id }} in a new tab" title="Open application in a new tab" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-[#1f7890] hover:bg-slate-50">
-                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 3h7v7M21 3 10 14M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/></svg>
-                                    </a>
-                                </td>
+
                             </tr>
                         @empty
-                            <tr><td colspan="11" class="h-40 text-center">
+                            <tr><td colspan="10" class="h-40 text-center">
                                 <p class="font-semibold text-slate-700">No applications found</p>
                                 <p class="mt-2 text-sm text-slate-500">No active applications match your assignments and filters.</p>
                             </td></tr>

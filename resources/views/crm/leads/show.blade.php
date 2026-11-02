@@ -377,10 +377,7 @@
             </div>
 
             <div class="mt-8 grid grid-cols-1 gap-x-14 lg:grid-cols-2">
-                <div class="lead-field lead-notes lg:col-span-2">
-                    <label for="lead-notes" class="lead-label self-start pt-2">Notes</label>
-                    <textarea id="lead-notes" name="notes" rows="5" maxlength="4000" class="lead-control min-h-[124px] resize-y @error('notes') is-invalid @enderror">{{ old('notes', $lead['notes']) }}</textarea>
-                </div>
+
             </div>
         </section>
 
@@ -390,6 +387,14 @@
             <button type="submit" class="lead-action lead-primary">Save</button>
         </footer>
     </form>
+
+    @if ($originalEnquiry)
+        <section class="mt-6 rounded-md border border-slate-200 bg-white p-4">
+            <h2 class="font-bold">Original enquiry</h2>
+            <p class="mt-2 whitespace-pre-wrap break-words text-sm">{{ $originalEnquiry }}</p>
+        </section>
+    @endif
+    <x-record-notes :stored="$storedNotes" module="leads" :record-id="$lead['lead_id']" :editable="true" />
 
     <x-applications.create-modal :action="route('leads.applications.create', $lead['lead_id'])" trigger="lead-create-application-open" :configuration="$applicationCreation" :from-lead="true" />
 

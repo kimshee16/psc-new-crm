@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
+use App\Models\ApplicationTypeSetting;
 use App\Models\Organisation;
+use App\Support\PSC\ApplicationLinks;
 use App\Support\PSC\ApplicationList;
 use App\Support\PSC\ApplicationSummary;
 use App\Support\PSC\CriticalDateFormatting;
+use App\Support\PSC\VisaGrants;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -53,23 +56,29 @@ class ApplicationsController extends Controller
         }, 'applications-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    public function show(Request $request, int $application, ApplicationSummary $summary): View
+    public function show(Request $request, int $application, ApplicationSummary $summary, ApplicationLinks $links): View
     {
         $record = Application::query()->assignedTo($request->user())
             ->with(['client', 'organisation', 'workflow', 'primaryCounsellor', 'secondaryCounsellor', 'migrationAgent'])
             ->findOrFail($application);
 
+        $tabs = ApplicationTypeSetting::tabsFor($record->category);
+        $requestedTab = $request->query('tab');
+        $activeTab = is_string($requestedTab) && array_key_exists($requestedTab, $tabs)
+            ? $requestedTab : array_key_first($tabs);
+
         return view('crm.applications.show', [
             'title' => 'PSC CRM - Application '.$application,
             'application' => $record,
-            'linkedApplication' => $record->linkedApplication()->assignedTo($request->user())->first(),
+            'applicationTabs' => $tabs,
+            'activeApplicationTab' => $activeTab,
+            'linkedItems' => $links->rows($record, $request->user())->get(),
         ] + $summary->viewData($record));
     }
 
-    public function update(Request $request, int $application, ApplicationSummary $summary): RedirectResponse
+    public function update(Request $request, int $application, ApplicationSummary $summary, VisaGrants $grants): RedirectResponse
     {
-        $record = Application::query()->assignedTo($request->user())->findOrFail($application);
-        $record->update($summary->validateUpdate($record, $request->all()));
+        $record = $grants->updateApplication($request->user(), $application, $request->all(), $summary);
 
         // Reassigning the final role away also removes access to this record.
         $route = Application::query()->assignedTo($request->user())->whereKey($record->id)->exists()
