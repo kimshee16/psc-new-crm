@@ -3,12 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
+use App\Models\ApplicationActivity;
 use App\Models\ApplicationTypeSetting;
-use App\Models\Organisation;
 use App\Support\PSC\ApplicationLinks;
 use App\Support\PSC\ApplicationList;
 use App\Support\PSC\ApplicationSummary;
 use App\Support\PSC\CriticalDateFormatting;
+use App\Support\PSC\NominationRecord;
 use App\Support\PSC\VisaGrants;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,7 +60,7 @@ class ApplicationsController extends Controller
     public function show(Request $request, int $application, ApplicationSummary $summary, ApplicationLinks $links): View
     {
         $record = Application::query()->assignedTo($request->user())
-            ->with(['client', 'organisation', 'workflow', 'primaryCounsellor', 'secondaryCounsellor', 'migrationAgent'])
+            ->with(['client', 'organisation', 'workflow', 'primaryCounsellor', 'secondaryCounsellor', 'migrationAgent', 'nomineeClient'])
             ->findOrFail($application);
 
         $tabs = ApplicationTypeSetting::tabsFor($record->category);
@@ -67,37 +68,35 @@ class ApplicationsController extends Controller
         $activeTab = is_string($requestedTab) && array_key_exists($requestedTab, $tabs)
             ? $requestedTab : array_key_first($tabs);
 
-        return view('crm.applications.show', [
+        $nomination = $record->category === 'Nomination' && $record->organisation_id;
+        $nominationData = $nomination ? app(NominationRecord::class)->viewData($record, $request->user()) : [];
+
+        return view($nomination ? 'crm.applications.nomination' : 'crm.applications.show', [
             'title' => 'PSC CRM - Application '.$application,
             'application' => $record,
             'applicationTabs' => $tabs,
             'activeApplicationTab' => $activeTab,
             'linkedItems' => $links->rows($record, $request->user())->get(),
-        ] + $summary->viewData($record));
+            'activities' => $record->organisation_id && in_array($record->category, ['SBS', 'Nomination'], true)
+                && isset(ApplicationActivity::TABS[$activeTab ?? ''])
+                    ? $record->activities()->where('kind', $activeTab)->latest('id')->paginate(15)->withQueryString() : null,
+        ] + $summary->viewData($record) + $nominationData);
     }
 
     public function update(Request $request, int $application, ApplicationSummary $summary, VisaGrants $grants): RedirectResponse
     {
-        $record = $grants->updateApplication($request->user(), $application, $request->all(), $summary);
+        $isNomination = Application::query()->assignedTo($request->user())->whereKey($application)
+            ->where('category', 'Nomination')->whereNotNull('organisation_id')->exists();
+        $record = $isNomination
+            ? app(NominationRecord::class)->update($request->user(), $application, $request->all())
+            : $grants->updateApplication($request->user(), $application, $request->all(), $summary);
 
         // Reassigning the final role away also removes access to this record.
         $route = Application::query()->assignedTo($request->user())->whereKey($record->id)->exists()
             ? redirect()->route('applications.show', $record->id)
             : redirect()->route('applications');
 
-        return $route->with('success', 'Application summary saved.');
-    }
-
-    public function organisation(Request $request, int $organisation): View
-    {
-        $record = Organisation::query()->whereHas('applications', fn ($query) => $query->assignedTo($request->user()))
-            ->findOrFail($organisation);
-
-        return view('crm.organisations.show', [
-            'title' => 'PSC CRM - '.$record->name,
-            'organisation' => $record,
-            'applications' => $record->applications()->assignedTo($request->user())->latest()->get(),
-        ]);
+        return $route->with('success', $isNomination ? 'Nomination application saved.' : 'Application summary saved.');
     }
 
     private function filters(Request $request): array

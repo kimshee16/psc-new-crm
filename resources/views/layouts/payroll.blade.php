@@ -9,6 +9,7 @@
         ['route' => 'applications', 'label' => 'Applications', 'icon' => 'applications', 'activeRoutes' => ['applications', 'applications.show', 'applications.links.edit', 'applications.links.update']],
         ['route' => 'leads', 'label' => 'Leads', 'icon' => 'leads'],
         ['route' => 'clients', 'label' => 'Clients', 'icon' => 'clients', 'activeRoutes' => ['clients', 'clients.search', 'clients.create', 'clients.show']],
+        ['route' => 'organisations', 'label' => 'Organisations', 'icon' => 'organisations', 'activeRoutes' => ['organisations', 'organisations.create', 'organisations.show', 'organisations.edit', 'organisations.applications.create']],
         ['route' => 'tasks', 'label' => 'Tasks', 'icon' => 'tasks'],
         ['route' => 'rfis', 'label' => 'RFI', 'icon' => 'rfis'],
         ...($showMyOffices ? [[

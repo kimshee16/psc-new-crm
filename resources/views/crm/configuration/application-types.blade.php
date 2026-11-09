@@ -6,7 +6,7 @@
             @php
                 $selectedTabs = old('category') === $category
                     ? old('tabs', [])
-                    : ($applicationTypeSettings->get($category)?->tabs ?? array_keys($applicationTabOptions));
+                    : array_keys(\App\Models\ApplicationTypeSetting::tabsFor($category));
                 $selectedTabs = is_array($selectedTabs) ? $selectedTabs : [];
             @endphp
             <form method="POST" action="{{ route('configuration.application-types.update') }}" class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

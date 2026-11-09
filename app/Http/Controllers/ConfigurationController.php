@@ -8,6 +8,7 @@ use App\Models\EducationLevel;
 use App\Models\EventReferral;
 use App\Models\LeadRedirection;
 use App\Models\Location;
+use App\Models\NominationSubclass;
 use App\Models\Office;
 use App\Models\PscEvent;
 use App\Models\Region;
@@ -87,6 +88,10 @@ class ConfigurationController extends Controller
             'userDirection' => $userDirection,
             'activeConfigurationTab' => $this->activeConfigurationTab($request),
             'applicationTypes' => ApplicationTypeSetting::types(),
+            'nominationSubclasses' => NominationSubclass::query()->orderBy('id')->get(),
+            'nominationVisaOptions' => NominationSubclass::visaOptions(),
+            'editingNominationSubclass' => $request->query('tab') === 'nomination-subclasses' && $request->query('edit')
+                ? NominationSubclass::findOrFail($request->query('edit')) : null,
             'applicationTabOptions' => ApplicationTypeSetting::TABS,
             'applicationTypeSettings' => ApplicationTypeSetting::query()->get()->keyBy('category'),
             'educationLevels' => EducationLevel::query()
@@ -428,6 +433,6 @@ class ConfigurationController extends Controller
     {
         $tab = (string) $request->query('tab', 'locations');
 
-        return in_array($tab, ['locations', 'education-levels', 'offices', 'regions', 'users', 'redirections', 'countries', 'events', 'event-marketing', 'application-types'], true) ? $tab : 'locations';
+        return in_array($tab, ['locations', 'education-levels', 'offices', 'regions', 'users', 'redirections', 'countries', 'events', 'event-marketing', 'application-types', 'nomination-subclasses'], true) ? $tab : 'locations';
     }
 }

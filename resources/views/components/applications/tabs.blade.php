@@ -1,4 +1,4 @@
-@props(['application', 'tabs', 'activeTab'])
+@props(['application', 'tabs', 'activeTab', 'activities' => null])
 
 <section id="application-tabs" class="mt-6 min-w-0 rounded-lg border border-slate-200 bg-white shadow-sm" aria-label="Application details">
     @if ($tabs)
@@ -12,7 +12,14 @@
         </nav>
         <section class="p-6" aria-labelledby="application-tab-{{ $activeTab }}">
             <h2 class="text-lg font-bold">{{ $tabs[$activeTab] }}</h2>
-            <p class="mt-3 text-sm text-slate-600">{{ $tabs[$activeTab] }} content is work in progress.</p>
+            @if ($activeTab === 'notes')
+                <x-record-notes :stored="$application->notes" module="applications" :record-id="$application->id" :editable="true" />
+            @elseif ($activities !== null)
+                <x-applications.activity-records :activities="$activities" :kind="$activeTab" />
+                @include('crm.organisations.activity-form', ['application' => $application, 'kind' => $activeTab])
+            @else
+                <p class="mt-3 text-sm text-slate-600">{{ $tabs[$activeTab] }} content is work in progress.</p>
+            @endif
         </section>
     @else
         <p class="p-6 text-sm text-slate-600">No tabs are enabled for this application type.</p>

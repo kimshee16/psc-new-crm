@@ -40,8 +40,9 @@ class ApplicationSummary
 
     public function options(Application $application, string $field): array
     {
-        $options = $application->workflow?->summary_options[$field]
-            ?? config('applications.creation_options.'.$field, []);
+        $options = $application->category === 'Nomination' && $field === 'nomination_pathway'
+            ? app(NominationCreation::class)->subclasses()
+            : ($application->workflow?->summary_options[$field] ?? config('applications.creation_options.'.$field, []));
         $options = array_values(array_unique(array_filter($options, fn ($value) => is_string($value) && trim($value) !== '')));
         // Retired choices can be retained, but cannot be selected on other cases.
         if ($application->exists && filled($application->$field)) {

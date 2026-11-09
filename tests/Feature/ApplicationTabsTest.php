@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Application;
+use App\Models\ApplicationActivity;
 use App\Models\ApplicationTypeSetting;
 use App\Models\Organisation;
 use App\Models\User;
@@ -22,7 +23,7 @@ class ApplicationTabsTest extends TestCase
         ]);
     }
 
-    public function test_all_types_default_to_the_seven_tabs_and_each_tab_can_be_opened(): void
+    public function test_all_types_default_to_the_configurable_tabs_and_each_tab_can_be_opened(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
@@ -30,15 +31,19 @@ class ApplicationTabsTest extends TestCase
         foreach (array_keys(ApplicationTypeSetting::types()) as $category) {
             $application = $this->application($user, $category);
             $this->get(route('applications.show', $application))->assertOk()
-                ->assertViewHas('applicationTabs', ApplicationTypeSetting::TABS)
-                ->assertViewHas('activeApplicationTab', 'tasks');
+                ->assertViewHas('applicationTabs', ApplicationTypeSetting::tabsFor($category))
+                ->assertViewHas('activeApplicationTab', $category === 'Nomination' ? 'notes' : 'tasks');
         }
 
-        foreach (ApplicationTypeSetting::TABS as $key => $label) {
-            $this->get(route('applications.show', ['application' => $application, 'tab' => $key]))
+        foreach (ApplicationTypeSetting::tabsFor('SBS') as $key => $label) {
+            $response = $this->get(route('applications.show', ['application' => $application, 'tab' => $key]))
                 ->assertOk()->assertViewHas('activeApplicationTab', $key)
-                ->assertSee($label.' content is work in progress.')
                 ->assertSee('aria-current="page"', false);
+            if (isset(ApplicationActivity::TABS[$key])) {
+                $response->assertSee('No '.strtolower($label).' records yet.')->assertSee('Save record');
+            } else {
+                $response->assertSee($label.' content is work in progress.');
+            }
         }
     }
 
@@ -62,7 +67,7 @@ class ApplicationTabsTest extends TestCase
                 ->assertDontSee('id="application-tab-payments"', false);
         }
         $this->get(route('applications.show', $visa))->assertOk()
-            ->assertViewHas('applicationTabs', ApplicationTypeSetting::TABS);
+            ->assertViewHas('applicationTabs', ApplicationTypeSetting::tabsFor('Visa'));
         $this->get(route('configuration', ['tab' => 'application-types']))->assertOk()
             ->assertViewHas('applicationTypeSettings', fn ($settings) => $settings['Study']->tabs === ['rfi', 'forms']);
     }

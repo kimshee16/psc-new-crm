@@ -4,6 +4,9 @@
     data-url="{{ route('applications.links.edit', $application) }}" data-save-url="{{ route('applications.links.update', $application) }}" data-token="{{ csrf_token() }}">
     <h2 id="application-links-title" class="text-xl font-bold">Link/Unlink Items</h2>
     <p class="mt-1 text-sm text-slate-500">Application #{{ $application->id }}. Changes take effect when you save.</p>
+    @if ($application->category === 'Nomination')
+        <p class="mt-2 text-sm text-slate-600">Active visa applications under the nominee are suggested first. Only one visa can be linked to this nomination; each visa can link to only one nomination. Linking fills and locks the nominee and subclass. Unlinking clears both fields.</p>
+    @endif
     <p data-link-message role="status" aria-live="polite" class="my-3 text-sm text-[#1f5f74]"></p>
     <fieldset data-link-controls disabled class="min-w-0 disabled:opacity-60">
         <section aria-labelledby="link-items-title">
@@ -146,11 +149,11 @@
             }
         }
     };
-    document.querySelector('[data-open-application-links]').addEventListener('click', () => {
+    document.querySelectorAll('[data-open-application-links]').forEach(button => button.addEventListener('click', () => {
         original.clear(); draft.clear(); selected.clear(); choices = []; ready = false;
         lookup = ''; input.value = ''; page = 1; lastPage = 1;
         render(); dialog.showModal(); load(true);
-    });
+    }));
     find('[data-link-lookup]').addEventListener('submit', event => {
         event.preventDefault(); lookup = input.value.trim(); page = 1; load(!ready);
     });

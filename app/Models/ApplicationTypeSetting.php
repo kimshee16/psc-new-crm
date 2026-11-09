@@ -7,14 +7,21 @@ use Illuminate\Database\Eloquent\Model;
 class ApplicationTypeSetting extends Model
 {
     public const TABS = [
+        'notes' => 'Notes',
         'tasks' => 'Tasks',
+        'lmt' => 'LMT',
         'rfi' => 'RFI',
         'payments' => 'Payments',
         'quotes' => 'Quotes',
+        'agreements' => 'Agreements',
         'sent-emails' => 'Sent Emails',
         'primary-files' => 'Primary Files',
         'forms' => 'Forms',
     ];
+
+    public const DEFAULT_TABS = ['tasks', 'rfi', 'payments', 'quotes', 'agreements', 'sent-emails', 'primary-files', 'forms'];
+
+    public const NOMINATION_TABS = ['notes', 'tasks', 'lmt', 'rfi', 'payments', 'agreements'];
 
     protected $fillable = ['category', 'tabs'];
 
@@ -37,7 +44,7 @@ class ApplicationTypeSetting extends Model
         $setting = self::query()->where('category', $category)->first();
 
         // An absent setting inherits the defaults; an empty list disables all tabs.
-        return self::availableTabs($setting?->tabs ?? array_keys(self::TABS));
+        return self::availableTabs($setting?->tabs ?? ($category === 'Nomination' ? self::NOMINATION_TABS : self::DEFAULT_TABS));
     }
 
     public static function availableTabs(array $tabs): array

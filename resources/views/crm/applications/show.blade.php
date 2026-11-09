@@ -2,8 +2,13 @@
 
 @section('content')
     <header class="mb-7">
-        <a href="{{ route('applications') }}" class="text-sm font-medium text-[#1f7890]">&larr; Applications</a>
-        <h1 class="mt-3 text-[26px] font-bold">Application {{ $application->id }}</h1>
+        @if($application->category === 'SBS' && $application->organisation_id)
+            <p class="text-sm text-slate-500"><a href="{{ route('organisations.show', $application->organisation_id) }}" class="font-medium text-[#1f7890] underline">{{ $application->organisation->name }}</a> / {{ $application->record_reference }}</p>
+            <h1 class="mt-3 text-[26px] font-bold">{{ $application->record_reference }} - {{ $application->type_label }}</h1>
+        @else
+            <a href="{{ route('applications') }}" class="text-sm font-medium text-[#1f7890]">&larr; Applications</a>
+            <h1 class="mt-3 text-[26px] font-bold">Application {{ $application->id }}</h1>
+        @endif
         <p class="mt-2 text-sm text-slate-600">{{ $application->owner_name }} &middot; {{ $application->type_label }}@if ($application->category === 'Study') &middot; {{ $application->course ?: 'Course TBD' }}@endif</p>
     </header>
     @if (session('success'))
@@ -21,7 +26,10 @@
             @endif
         </section>
     </div>
+    @if ($application->organisation_id && in_array($application->category, ['SBS', 'Nomination']))
+        @include('crm.organisations.application-details')
+    @endif
     <x-applications.linked-items :application="$application" :items="$linkedItems" />
-    <x-applications.tabs :application="$application" :tabs="$applicationTabs" :active-tab="$activeApplicationTab" />
+    <x-applications.tabs :application="$application" :tabs="$applicationTabs" :active-tab="$activeApplicationTab" :activities="$activities" />
     <x-record-notes :stored="$application->notes" module="applications" :record-id="$application->id" :editable="true" />
 @endsection

@@ -5,6 +5,12 @@
         $activeConfigurationTab = $activeConfigurationTab ?? 'locations';
         $configurationTabs = [
             [
+                'id' => 'nomination-subclasses',
+                'label' => 'Nomination Subclasses',
+                'description' => 'Visa subclasses available for nominations.',
+                'count' => $nominationSubclasses->count(),
+            ],
+            [
                 'id' => 'application-types',
                 'label' => 'Application Types',
                 'description' => 'Choose the tabs available for each application type.',
@@ -208,6 +214,8 @@
         <div class="configuration-content min-w-0 flex-1">
             @if ($activeConfigurationTab === 'application-types')
                 @include('crm.configuration.application-types')
+            @elseif ($activeConfigurationTab === 'nomination-subclasses')
+                @include('crm.configuration.nomination-subclasses')
             @elseif ($activeConfigurationTab === 'event-marketing')
                 @include('crm.configuration.event-marketing')
             @elseif ($activeConfigurationTab === 'events')

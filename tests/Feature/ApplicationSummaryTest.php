@@ -237,8 +237,9 @@ class ApplicationSummaryTest extends TestCase
         $service = app(ApplicationSummary::class);
         $appeal = $service->create($user, ['client_id' => $client->id, 'category' => 'ART Appeal', 'psc_client' => false, 'visa_subclass' => '500 - Student Visa']);
         $this->assertFalse($appeal->fresh()->psc_client);
-        $nomination = $service->create($user, ['organisation_id' => $organisation->id, 'category' => 'Nomination', 'application_workflow_id' => $workflow->id, 'nomination_pathway' => 'DAMA']);
-        $this->assertSame('DAMA', $nomination->nomination_pathway);
+        $pathway = '186 - Employer Nomination Scheme Visa';
+        $nomination = $service->create($user, ['organisation_id' => $organisation->id, 'category' => 'Nomination', 'application_workflow_id' => $workflow->id, 'nomination_pathway' => $pathway]);
+        $this->assertSame($pathway, $nomination->nomination_pathway);
         foreach ([
             ['category' => 'Study'],
             ['category' => 'Study', 'client_id' => $client->id, 'organisation_id' => $organisation->id],
@@ -246,6 +247,7 @@ class ApplicationSummaryTest extends TestCase
             ['category' => 'Visa', 'client_id' => $client->id],
             ['category' => 'ART Appeal', 'client_id' => $client->id, 'psc_client' => false],
             ['category' => 'Nomination', 'organisation_id' => $organisation->id, 'application_workflow_id' => $workflow->id],
+            ['category' => 'Nomination', 'organisation_id' => $organisation->id, 'application_workflow_id' => $workflow->id, 'nomination_pathway' => 'DAMA'],
             ['category' => 'Study', 'client_id' => $client->id, 'application_workflow_id' => $workflow->id],
         ] as $invalid) {
             try {

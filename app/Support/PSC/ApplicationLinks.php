@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\User;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ApplicationLinks
 {
@@ -53,10 +54,30 @@ class ApplicationLinks
                 'linked_application_id' => max($applicationId, $linkedId),
             ];
             $query = DB::table('application_links')->where($pair);
+            $nomination = $records->firstWhere('category', 'Nomination');
+            $visa = $records->firstWhere('category', 'Visa');
+            $nominationVisa = $nomination && $visa;
+            $wasLinked = $nominationVisa && Application::query()->linkedTo($nomination)->whereKey($visa->id)->exists();
 
             if ($link) {
+                if ($nominationVisa) {
+                    // Both endpoints are locked, so concurrent requests sharing either
+                    // endpoint cannot assign a second visa or a second nomination.
+                    $otherVisa = Application::query()->linkedTo($nomination)->where('category', 'Visa')->whereKeyNot($visa->id)->lockForUpdate()->first();
+                    $otherNomination = Application::query()->linkedTo($visa)->where('category', 'Nomination')->whereKeyNot($nomination->id)->lockForUpdate()->first();
+                    if ($otherVisa || $otherNomination) {
+                        throw ValidationException::withMessages(['linked_application_id' => 'Only one visa application can be linked to a nomination, and each visa can link to only one nomination.']);
+                    }
+                }
                 if (! $query->exists()) {
                     DB::table('application_links')->insert($pair + ['created_at' => now()]);
+                }
+                if ($nominationVisa) {
+                    $nomination->fill(['nominee_client_id' => $visa->client_id, 'nominee_name' => null, 'nomination_pathway' => $visa->visa_subclass]);
+                    if (! $wasLinked) {
+                        $nomination->sponsorship_id = app(NominationRecord::class)->defaultSponsorship($nomination, $user);
+                    }
+                    $nomination->save();
                 }
             } else {
                 $query->delete();
@@ -67,6 +88,9 @@ class ApplicationLinks
                         $record->linked_application_id = null;
                         $record->save();
                     }
+                }
+                if ($nominationVisa && $wasLinked) {
+                    $nomination->fill(['nominee_client_id' => null, 'nominee_name' => null, 'nomination_pathway' => null])->save();
                 }
             }
         });
@@ -80,7 +104,10 @@ class ApplicationLinks
         // An organisation with no client must not suggest every clientless application.
         return $id !== null
             ? $query->where('id', $id)
-            : $query->where('client_id', $application->client_id)->whereNotNull('client_id')->orderByDesc('id');
+            : $query->where('client_id', $application->category === 'Nomination' ? $application->nominee_client_id : $application->client_id)
+                ->whereNotNull('client_id')
+                ->when($application->category === 'Nomination', fn ($q) => $q->where('category', 'Visa')
+                    ->whereNotIn('status', ['Finalised', 'Withdrawn']))->orderByDesc('id');
     }
 
     public function save(User $user, int $applicationId, array $add, array $remove): void
@@ -91,11 +118,11 @@ class ApplicationLinks
             $records = Application::query()->assignedTo($user)->whereIn('id', $ids)
                 ->orderBy('id')->lockForUpdate()->get();
             abort_unless($records->count() === count($ids), 404);
-            foreach ($add as $id) {
-                $this->change($user, $applicationId, (int) $id, true);
-            }
             foreach ($remove as $id) {
                 $this->change($user, $applicationId, (int) $id, false);
+            }
+            foreach ($add as $id) {
+                $this->change($user, $applicationId, (int) $id, true);
             }
         });
     }

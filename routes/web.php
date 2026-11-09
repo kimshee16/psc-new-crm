@@ -1,7 +1,8 @@
 <?php
 
-use App\Http\Controllers\ApplicationsController;
+use App\Http\Controllers\ApplicationActivitiesController;
 use App\Http\Controllers\ApplicationLinksController;
+use App\Http\Controllers\ApplicationsController;
 use App\Http\Controllers\ApplicationTypeConfigurationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientsController;
@@ -14,6 +15,10 @@ use App\Http\Controllers\EventRegistrationFormController;
 use App\Http\Controllers\HolidaysController;
 use App\Http\Controllers\LeadsController;
 use App\Http\Controllers\MyOfficesController;
+use App\Http\Controllers\NominationSubclassConfigurationController;
+use App\Http\Controllers\OrganisationApplicationsController;
+use App\Http\Controllers\OrganisationsController;
+use App\Http\Controllers\OrganisationTasksController;
 use App\Http\Controllers\RecordNotesController;
 use App\Http\Controllers\UserConfigurationController;
 use App\Http\Controllers\UserInvitationController;
@@ -89,7 +94,25 @@ $registerRoutes = function () {
         Route::post('/applications/{application}/linked-items', [ApplicationLinksController::class, 'update'])->whereNumber('application')->name('applications.links.update');
         Route::get('/applications/{application}', [ApplicationsController::class, 'show'])->whereNumber('application')->name('applications.show');
         Route::patch('/applications/{application}', [ApplicationsController::class, 'update'])->whereNumber('application')->name('applications.update');
-        Route::get('/organisations/{organisation}', [ApplicationsController::class, 'organisation'])->whereNumber('organisation')->name('organisations.show');
+        Route::get('/applications/{application}/organisation-details/edit', [OrganisationApplicationsController::class, 'edit'])->whereNumber('application')->name('applications.organisation-details.edit');
+        Route::patch('/applications/{application}/organisation-details', [OrganisationApplicationsController::class, 'update'])->whereNumber('application')->name('applications.organisation-details.update');
+        Route::post('/applications/{application}/activities', [ApplicationActivitiesController::class, 'store'])->whereNumber('application')->name('applications.activities.store');
+
+        Route::get('/organisations', [OrganisationsController::class, 'index'])->name('organisations');
+        Route::get('/organisations/export', [OrganisationsController::class, 'export'])->name('organisations.export');
+        Route::get('/organisations/create', [OrganisationsController::class, 'create'])->name('organisations.create');
+        Route::post('/organisations', [OrganisationsController::class, 'store'])->name('organisations.store');
+        Route::get('/organisations/{organisation}', [OrganisationsController::class, 'show'])->whereNumber('organisation')->name('organisations.show');
+        Route::get('/organisations/{organisation}/edit', [OrganisationsController::class, 'edit'])->whereNumber('organisation')->name('organisations.edit');
+        Route::patch('/organisations/{organisation}', [OrganisationsController::class, 'update'])->whereNumber('organisation')->name('organisations.update');
+        Route::post('/organisations/{organisation}/contacts', [OrganisationsController::class, 'saveContact'])->whereNumber('organisation')->name('organisations.contacts.store');
+        Route::patch('/organisations/{organisation}/contacts/{contact}', [OrganisationsController::class, 'saveContact'])->whereNumber(['organisation', 'contact'])->name('organisations.contacts.update');
+        Route::get('/organisations/{organisation}/applications/create', [OrganisationApplicationsController::class, 'create'])->whereNumber('organisation')->name('organisations.applications.create');
+        Route::get('/organisations/{organisation}/nominees', [OrganisationApplicationsController::class, 'nominees'])->whereNumber('organisation')->name('organisations.nominees');
+        Route::post('/organisations/{organisation}/applications', [OrganisationApplicationsController::class, 'store'])->whereNumber('organisation')->name('organisations.applications.store');
+        Route::post('/organisations/{organisation}/tasks', [OrganisationTasksController::class, 'store'])->whereNumber('organisation')->name('organisations.tasks.store');
+        Route::patch('/organisations/{organisation}/tasks/{task}', [OrganisationTasksController::class, 'update'])->whereNumber(['organisation', 'task'])->name('organisations.tasks.update');
+        Route::delete('/organisations/{organisation}/tasks/{task}', [OrganisationTasksController::class, 'destroy'])->whereNumber(['organisation', 'task'])->name('organisations.tasks.destroy');
 
         Route::get('/clients', [ClientsController::class, 'index'])->name('clients');
         Route::get('/clients/export', [ClientsController::class, 'export'])->name('clients.export');
@@ -118,6 +141,9 @@ $registerRoutes = function () {
         Route::patch('/holidays/{holiday}/cancel', [HolidaysController::class, 'cancel'])->name('holidays.cancel');
 
         Route::get('/configuration', [ConfigurationController::class, 'index'])->name('configuration');
+        Route::post('/configuration/nomination-subclasses', [NominationSubclassConfigurationController::class, 'store'])->name('configuration.nomination-subclasses.store');
+        Route::patch('/configuration/nomination-subclasses/{nominationSubclass}', [NominationSubclassConfigurationController::class, 'update'])->name('configuration.nomination-subclasses.update');
+        Route::delete('/configuration/nomination-subclasses/{nominationSubclass}', [NominationSubclassConfigurationController::class, 'destroy'])->name('configuration.nomination-subclasses.destroy');
         Route::patch('/configuration/application-types', [ApplicationTypeConfigurationController::class, 'update'])->name('configuration.application-types.update');
         Route::post('/configuration/event-marketing', [EventReferralConfigurationController::class, 'store'])->name('configuration.event-marketing.store');
         Route::patch('/configuration/event-marketing/{eventReferral}', [EventReferralConfigurationController::class, 'update'])->name('configuration.event-marketing.update');
