@@ -24,6 +24,7 @@
                 <p class="mt-2 text-sm text-slate-600">Find organisations you created or have assigned applications for.</p>
             </div>
             <div class="flex flex-wrap gap-2">
+                <a href="{{ route('organisations.search') }}" class="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700">{!! payroll_icon('search', 'h-4 w-4') !!} Organisation search</a>
                 <button type="submit" class="inline-flex min-h-10 items-center gap-2 rounded-md bg-[#1f7890] px-4 py-2 text-sm font-bold text-white hover:bg-[#17657a]">{!! payroll_icon('filter') !!} Apply filters</button>
                 <a href="{{ route('organisations') }}" class="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700">{!! payroll_icon('x') !!} Clear filters</a>
                 <button type="submit" formaction="{{ route('organisations.export') }}" class="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700">{!! payroll_icon('download') !!} Download CSV</button>
@@ -35,7 +36,8 @@
         <section class="rounded-lg border border-slate-200 bg-white shadow-sm" aria-label="Organisations list">
             <div class="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 px-5 py-4">
                 <label for="organisation-search" class="text-sm font-semibold text-slate-700">Search organisations
-                    <input id="organisation-search" type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Name, ABN or Organisation ID" maxlength="255" class="mt-2 block w-72 max-w-full rounded-md border border-slate-300 px-3 py-2 font-normal">
+                    <input id="organisation-search" type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Organisation or contact details" aria-describedby="organisation-search-help" maxlength="255" class="mt-2 block w-72 max-w-full rounded-md border border-slate-300 px-3 py-2 font-normal">
+                    <span id="organisation-search-help" class="mt-1 block text-xs font-normal text-slate-500">Name, ABN, ID, contact name, mobile or email.</span>
                 </label>
                 <p class="text-sm text-slate-600" role="status">Showing {{ $organisations->firstItem() ?? 0 }}&ndash;{{ $organisations->lastItem() ?? 0 }} of {{ $organisations->total() }} organisations</p>
             </div>

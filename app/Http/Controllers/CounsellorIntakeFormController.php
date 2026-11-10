@@ -19,6 +19,18 @@ class CounsellorIntakeFormController extends Controller
 {
     public function __construct(private readonly WebsiteLeadReferences $references) {}
 
+    public function index(Request $request): View
+    {
+        return view('crm.walk-in-forms', [
+            'title' => 'PSC CRM - Walk-in Forms',
+            'counsellors' => User::query()->where('is_active', true)
+                ->where('portal_invite_status', '!=', 'Restrict Access')
+                ->orderByRaw('CASE WHEN id = ? THEN 0 ELSE 1 END', [$request->user()->id])
+                ->orderBy('name')->orderBy('id')->paginate(20),
+            'offices' => WebsiteLeadReferences::offices(),
+        ]);
+    }
+
     public function show(User $counsellor): View
     {
         return view('website.counsellor-intake-form', $this->viewData($counsellor) + [

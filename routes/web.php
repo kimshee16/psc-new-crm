@@ -68,6 +68,7 @@ $registerRoutes = function () {
         ->name('logout');
 
     Route::middleware(['auth', 'active-user'])->group(function () {
+        Route::get('/walk-in-forms', [CounsellorIntakeFormController::class, 'index'])->name('counsellor-intake.index');
         Route::post('/{module}/{recordId}/notes', [RecordNotesController::class, 'save'])
             ->whereIn('module', ['clients', 'leads', 'applications'])->whereNumber('recordId')->name('notes.store');
         Route::match(['patch', 'delete'], '/{module}/{recordId}/notes/{noteId}', [RecordNotesController::class, 'save'])
@@ -99,6 +100,8 @@ $registerRoutes = function () {
         Route::post('/applications/{application}/activities', [ApplicationActivitiesController::class, 'store'])->whereNumber('application')->name('applications.activities.store');
 
         Route::get('/organisations', [OrganisationsController::class, 'index'])->name('organisations');
+        Route::get('/organisations/search', [OrganisationsController::class, 'search'])->name('organisations.search');
+        Route::get('/organisations/search/{organisation}', [OrganisationsController::class, 'searchShow'])->whereNumber('organisation')->name('organisations.search.show');
         Route::get('/organisations/export', [OrganisationsController::class, 'export'])->name('organisations.export');
         Route::get('/organisations/create', [OrganisationsController::class, 'create'])->name('organisations.create');
         Route::post('/organisations', [OrganisationsController::class, 'store'])->name('organisations.store');

@@ -19,6 +19,29 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OrganisationsController extends Controller
 {
+    private const SEARCH_FIELDS = ['id', 'organisation_name', 'contact_name', 'contact_mobile', 'contact_email'];
+
+    public function search(Request $request, OrganisationList $list): View
+    {
+        $rules = array_fill_keys(self::SEARCH_FIELDS, ['nullable', 'string', 'max:255']);
+        $filters = $request->validate($rules + ['page' => ['sometimes', 'integer', 'min:1']]);
+        $hasSearch = collect($filters)->only(self::SEARCH_FIELDS)->contains(fn ($value) => filled($value));
+
+        return view('crm.organisations.search', [
+            'title' => 'PSC CRM - Organisation Search', 'filters' => $filters, 'hasSearch' => $hasSearch,
+            'organisations' => $hasSearch ? $list->filtered($request->user(), $filters, global: true)
+                ->with('contacts')->paginate(20)->withQueryString() : null,
+        ]);
+    }
+
+    public function searchShow(Request $request, Organisation $organisation): View
+    {
+        return view('crm.organisations.search-record', [
+            'title' => 'PSC CRM - '.$organisation->name, 'organisation' => $organisation->load('contacts'),
+            'canOpenRecord' => Organisation::query()->visibleTo($request->user())->whereKey($organisation->id)->exists(),
+        ]);
+    }
+
     public function index(Request $request, OrganisationList $list): View
     {
         $filters = $this->listFilters($request);
