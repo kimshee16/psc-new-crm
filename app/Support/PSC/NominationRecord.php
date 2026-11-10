@@ -53,7 +53,7 @@ class NominationRecord
         return strtolower(trim($application->status)) === 'active'
             && strtolower(trim((string) $application->sponsor_type)) !== 'labour agreement'
             && (! $application->approval_date || $application->approval_date->lte(today()))
-            && (! $application->expiry_date || $application->expiry_date->gte(today()));
+            && (! $application->expiry_date || $application->expiry_date->gt(today()));
     }
 
     public function defaultSponsorship(Application $application, User $user): ?int

@@ -24,7 +24,7 @@ class ApplicationSummary
             ->where('portal_invite_status', '!=', 'Restrict Access')
             ->whereIn('account_type', User::CONFIGURABLE_ROLES);
 
-        if ($application->workflow) {
+        if ($application->workflow && ! SbsRecord::supports($application)) {
             // A workflow explicitly grants case handling permission. Existing
             // assignments and its default agent also carry case access.
             $permitted = $application->workflow->caseHandlers()->pluck('users.id')->all();
@@ -126,7 +126,7 @@ class ApplicationSummary
             'critical_date' => ['nullable', 'date_format:Y-m-d'],
             'primary_counsellor_id' => ['required', 'integer', Rule::in($staffIds)],
             'secondary_counsellor_id' => ['nullable', 'integer', Rule::in($staffIds)],
-            'migration_agent_id' => [$application->category === 'Visa' ? 'required' : 'nullable', 'integer', Rule::in($staffIds)],
+            'migration_agent_id' => [$application->category === 'Visa' || SbsRecord::supports($application) ? 'required' : 'nullable', 'integer', Rule::in($staffIds)],
             'assessment_body' => $application->category === 'Assessment'
                 ? ['required', 'string', 'max:255', Rule::in($this->options($application, 'assessment_body'))] : ['missing'],
             'visa_subclass' => $application->category === 'Visa'

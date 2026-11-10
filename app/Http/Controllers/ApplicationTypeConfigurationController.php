@@ -20,6 +20,10 @@ class ApplicationTypeConfigurationController extends Controller
             'tabs.*' => ['required', 'string', 'distinct', Rule::in(array_keys(ApplicationTypeSetting::TABS))],
         ]);
 
+        if ($validated['category'] !== 'SBS') {
+            $request->validate(['tabs.*' => [Rule::notIn(['nominations'])]]);
+        }
+
         ApplicationTypeSetting::query()->updateOrCreate(['category' => $validated['category']], [
             'tabs' => array_keys(ApplicationTypeSetting::availableTabs($validated['tabs'] ?? [])),
         ]);

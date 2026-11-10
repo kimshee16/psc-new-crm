@@ -174,6 +174,7 @@ class LeadsController extends Controller
             'title' => 'PSC CRM - Lead '.$lead->lead_id,
             'lead' => $this->leadRecord($lead),
             'storedNotes' => $lead->notes,
+            'noteRecord' => $lead,
             'originalEnquiry' => $lead->enquiry,
             'applicationCreation' => app(ApplicationCreation::class)->viewData($request->user()),
             'statuses' => $this->statuses(),

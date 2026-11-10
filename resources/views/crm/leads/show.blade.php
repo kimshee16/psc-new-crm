@@ -197,6 +197,7 @@
                 <h1 class="mt-3 text-[26px] font-bold leading-tight text-[#101820]">Lead ID {{ $lead['lead_id'] }} - {{ $lead['client_full_name'] }}</h1>
             </div>
             <div class="flex flex-wrap gap-2">
+                <a href="#leads-{{ $lead['lead_id'] }}-notes" class="lead-action lead-primary">Notes</a>
                 <a href="mailto:{{ $lead['email'] }}" class="lead-action lead-primary">
                     {!! payroll_icon('mail', 'h-4 w-4') !!}
                     <span>Email</span>
@@ -394,7 +395,7 @@
             <p class="mt-2 whitespace-pre-wrap break-words text-sm">{{ $originalEnquiry }}</p>
         </section>
     @endif
-    <x-record-notes :stored="$storedNotes" module="leads" :record-id="$lead['lead_id']" :editable="true" />
+    <x-related-record-notes :record="$noteRecord" module="leads" :record-id="$lead['lead_id']" />
 
     <x-applications.create-modal :action="route('leads.applications.create', $lead['lead_id'])" trigger="lead-create-application-open" :configuration="$applicationCreation" :from-lead="true" />
 

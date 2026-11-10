@@ -10,6 +10,7 @@
             <h1 class="mt-3 text-[26px] font-bold">Application {{ $application->id }}</h1>
         @endif
         <p class="mt-2 text-sm text-slate-600">{{ $application->owner_name }} &middot; {{ $application->type_label }}@if ($application->category === 'Study') &middot; {{ $application->course ?: 'Course TBD' }}@endif</p>
+        <a href="#applications-{{ $application->id }}-notes" class="mt-3 inline-flex rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-[#1f7890]">Notes</a>
     </header>
     @if (session('success'))
         <p role="status" class="mb-5 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{{ session('success') }}</p>
@@ -31,5 +32,7 @@
     @endif
     <x-applications.linked-items :application="$application" :items="$linkedItems" />
     <x-applications.tabs :application="$application" :tabs="$applicationTabs" :active-tab="$activeApplicationTab" :activities="$activities" />
-    <x-record-notes :stored="$application->notes" module="applications" :record-id="$application->id" :editable="true" />
+    @if ($activeApplicationTab !== 'notes')
+        <x-related-record-notes :record="$application" module="applications" :record-id="$application->id" />
+    @endif
 @endsection

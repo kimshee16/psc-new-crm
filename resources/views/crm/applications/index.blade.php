@@ -94,9 +94,7 @@
                                 @foreach ($columns as $column => $label)
                                     <td>
                                         @if ($column === 'id')
-                                            <a class="font-semibold text-[#1f7890] underline underline-offset-2" href="{{ route('applications.show', $application->id) }}" aria-label="Open application {{ $application->id }}">{{ $application->id }}</a>
-                                        @elseif ($column === 'client_name' && ($application->client_reference || $application->organisation_id))
-                                            <a class="font-semibold text-[#1f7890] underline underline-offset-2" href="{{ $application->organisation_id ? route('organisations.show', $application->organisation_id) : route('clients.show', $application->client_reference) }}">{{ $application->client_name }}</a>
+                                            <a class="font-semibold text-[#1f7890] underline underline-offset-2" href="{{ route('applications.show', $application->id) }}" aria-label="Open application {{ $application->id }}">{{ str_pad((string) $application->id, 5, '0', STR_PAD_LEFT) }}</a>
                                         @elseif ($column === 'critical_date')
                                             <span class="whitespace-nowrap font-medium">{{ $application->critical_date ? \Illuminate\Support\Carbon::parse($application->critical_date)->format('d/m/Y') : '—' }}</span>
                                             <span class="mt-1 block text-xs {{ $urgency['tone'] === 'red' ? 'font-semibold text-red-700' : 'text-slate-500' }}">{{ $urgency['label'] }}</span>

@@ -1,17 +1,21 @@
-@props(['stored' => '', 'module', 'recordId', 'editable' => false, 'notice' => ''])
+@props(['stored' => '', 'module', 'recordId', 'editable' => false, 'notice' => '', 'sharedClient' => false, 'sectionId' => null, 'heading' => null])
 @php
     $notesService = app(\App\Support\PSC\RecordNotes::class);
     $notes = $notesService->all($stored);
 @endphp
-<section class="record-notes mt-8" data-record-notes data-version="{{ $notesService->version($stored) }}" data-url="{{ route('notes.store', ['module' => $module, 'recordId' => $recordId]) }}" data-token="{{ csrf_token() }}" aria-label="{{ ucfirst(rtrim($module, 's')) }} notes">
-    <h2 class="mb-2 text-lg font-bold">{{ ['clients' => 'Client', 'leads' => 'Lead', 'applications' => 'Application'][$module] }} Notes</h2>
+<section id="{{ $sectionId ?? $module.'-'.$recordId.'-notes' }}" class="record-notes mt-8 scroll-mt-24" tabindex="-1" data-record-notes data-version="{{ $notesService->version($stored) }}" data-url="{{ route('notes.store', ['module' => $module, 'recordId' => $recordId]) }}" data-token="{{ csrf_token() }}" aria-label="{{ $heading ?? ($sharedClient ? 'Shared Client Notes' : ucfirst(rtrim($module, 's')).' notes') }}">
+    <h2 class="mb-2 text-lg font-bold">{{ $heading ?? ['clients' => 'Client', 'leads' => 'Lead', 'applications' => 'Application'][$module].' Notes' }}</h2>
+    @if ($sharedClient)
+        <p class="mb-3 text-xs text-slate-500">Shared with the Client record and its linked Leads and Applications.</p>
+        @unless ($editable)<p class="mb-3 text-xs text-slate-500">You can view these notes. Editing requires permission to manage this Client's notes.</p>@endunless
+    @endif
     <p class="mb-4 text-xs text-slate-500">Newest notes first. Notes save separately from the record.</p>
     @if ($module === 'applications')
         <p class="mb-4 text-xs text-slate-500">Use notes for record-level comments. Keep detailed workflow updates and documentation in the relevant application sections.</p>
     @endif
     <p data-note-status role="status" aria-live="polite" class="mb-3 text-sm">{{ $notice }}</p>
     @if ($editable)
-        <details class="mb-4 rounded-md border border-slate-200 bg-white p-3" data-note-editor>
+        <details class="mb-4 rounded-md border border-slate-200 bg-white p-3" data-note-editor @if ($notes === [] && in_array($module, ['leads', 'applications'], true)) open @endif>
             <summary class="cursor-pointer text-sm font-bold text-[#1f7890]">Add Note</summary>
             <label class="mt-3 block text-sm">New note
                 <textarea data-note-body rows="4" maxlength="10000" class="mt-1 block w-full rounded-md border border-slate-300 p-3" placeholder="Write a note..."></textarea>

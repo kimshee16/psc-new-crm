@@ -31,13 +31,18 @@ class ApplicationLinksTest extends TestCase
         ]);
     }
 
-    public function test_every_type_has_a_linked_items_section_and_action_even_without_tabs_or_links(): void
+    public function test_linked_items_remain_available_except_on_the_readonly_sbs_nomination_list(): void
     {
         $user = User::factory()->create();
         $this->actingAs($user);
         foreach (array_keys(ApplicationTypeSetting::types()) as $category) {
             ApplicationTypeSetting::create(['category' => $category, 'tabs' => []]);
             $application = $this->application($user, ['category' => $category]);
+            if ($category === 'SBS') {
+                $this->get(route('applications.show', $application))->assertOk()->assertDontSee('Link/Unlink Items');
+
+                continue;
+            }
             $this->get(route('applications.show', $application))->assertOk()
                 ->assertSee('Linked Items')->assertSee('Application ID #')
                 ->assertSee('Application description')->assertSee('Status')

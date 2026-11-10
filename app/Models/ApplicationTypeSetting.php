@@ -11,6 +11,7 @@ class ApplicationTypeSetting extends Model
         'tasks' => 'Tasks',
         'lmt' => 'LMT',
         'rfi' => 'RFI',
+        'nominations' => 'Nominations',
         'payments' => 'Payments',
         'quotes' => 'Quotes',
         'agreements' => 'Agreements',
@@ -22,6 +23,8 @@ class ApplicationTypeSetting extends Model
     public const DEFAULT_TABS = ['tasks', 'rfi', 'payments', 'quotes', 'agreements', 'sent-emails', 'primary-files', 'forms'];
 
     public const NOMINATION_TABS = ['notes', 'tasks', 'lmt', 'rfi', 'payments', 'agreements'];
+
+    public const SBS_TABS = ['tasks', 'rfi', 'nominations', 'payments', 'agreements'];
 
     protected $fillable = ['category', 'tabs'];
 
@@ -35,16 +38,24 @@ class ApplicationTypeSetting extends Model
         return Application::TYPES + ['SBS' => 'SBS'];
     }
 
-    public static function tabsFor(string $category): array
+    public static function tabsFor(string $category, ?string $sponsorType = null): array
     {
         if (! array_key_exists($category, self::types())) {
             return [];
         }
 
         $setting = self::query()->where('category', $category)->first();
+        $labour = $category === 'SBS' && strcasecmp(trim((string) $sponsorType), 'Labour Agreement') === 0;
 
         // An absent setting inherits the defaults; an empty list disables all tabs.
-        return self::availableTabs($setting?->tabs ?? ($category === 'Nomination' ? self::NOMINATION_TABS : self::DEFAULT_TABS));
+        $defaults = match ($category) {
+            'Nomination' => self::NOMINATION_TABS,
+            'SBS' => $labour ? self::DEFAULT_TABS : self::SBS_TABS,
+            default => self::DEFAULT_TABS,
+        };
+        $tabs = self::availableTabs($setting?->tabs ?? $defaults);
+
+        return $category === 'SBS' && ! $labour ? $tabs : array_diff_key($tabs, ['nominations' => true]);
     }
 
     public static function availableTabs(array $tabs): array

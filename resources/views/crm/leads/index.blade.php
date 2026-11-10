@@ -45,6 +45,7 @@
             <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-[11px] uppercase tracking-[0.08em] text-slate-500">
                     <tr class="align-top">
+                        <th class="min-w-32 px-5 py-3 font-bold">Lead ID</th>
                         <th class="min-w-64 px-5 py-3 font-bold">
                             <button type="button" data-sort="client_full_name" class="leads-sort inline-flex items-center gap-1 text-left font-bold uppercase tracking-[0.08em] text-slate-600 hover:text-[#1f7890]">
                                 <span>Client</span>
@@ -100,7 +101,6 @@
                                 <span data-sort-label="days_in_queue" class="sr-only">not sorted</span>
                             </button>
                         </th>
-                        <th class="min-w-32 px-5 py-3 font-bold">Lead ID</th>
                     </tr>
                 </thead>
                 <tbody id="leads-table-body" class="divide-y divide-slate-100"></tbody>
@@ -207,7 +207,6 @@
             const renderRows = (visibleLeads) => {
                 elements.tbody.innerHTML = visibleLeads.map((lead) => {
                     const showUrl = routes.show.replace('__LEAD_ID__', encodeURIComponent(lead.lead_id));
-                    const clientUrl = lead.client_url ? escapeHtml(lead.client_url) : '#';
                     const duplicateFlag = lead.has_duplicate
                         ? `<span title="Duplicate match" class="inline-flex min-h-9 items-center justify-center rounded-md border border-amber-200 bg-amber-50 px-2 py-2 text-amber-700">{!! payroll_icon('flag', 'h-4 w-4') !!}<span class="sr-only">Duplicate match</span></span>`
                         : '';
@@ -218,17 +217,17 @@
                     return `
                         <tr>
                             <td class="px-5 py-4">
-                                <a href="${clientUrl}" class="font-semibold text-[#2472b8] underline">${escapeHtml(lead.client_full_name)}</a>
+                                <a href="${showUrl}" class="font-semibold text-[#1f7890] underline underline-offset-2">${escapeHtml(lead.lead_id)}</a>
+                                ${duplicateFlag}
+                            </td>
+                            <td class="px-5 py-4">
+                                <span class="font-semibold text-slate-700">${escapeHtml(lead.client_full_name)}</span>
                             </td>
                             <td class="px-5 py-4"><span class="rounded-full px-3 py-1 text-xs font-bold ${statusClasses(lead.status)}">${escapeHtml(lead.status)}</span></td>
                             <td class="px-5 py-4"><span class="rounded-full px-3 py-1 text-xs font-bold capitalize ${priorityClasses(lead.priority)}">${escapeHtml(lead.priority)}</span></td>
                             ${adminCells}
                             <td class="px-5 py-4 text-slate-600">${escapeHtml(lead.modified_at)}</td>
                             <td class="px-5 py-4"><span class="leads-queue-badge" data-level="${escapeHtml(lead.queue_age_level)}">${escapeHtml(lead.days_in_queue_label)}</span></td>
-                            <td class="px-5 py-4">
-                                <a href="${showUrl}" class="font-semibold text-[#1f7890] underline underline-offset-2">${escapeHtml(lead.lead_id)}</a>
-                                ${duplicateFlag}
-                            </td>
                         </tr>
                     `;
                 }).join('');

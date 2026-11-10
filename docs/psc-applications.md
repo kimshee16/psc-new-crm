@@ -4,7 +4,7 @@
 
 Admins and Super Admins can choose available tabs under Configuration > Application Types. Each supported type, including legacy SBS, independently enables Tasks, RFI, Payments, Quotes, Sent Emails, Primary Files and Forms. Until configured, all seven are enabled in that order; saving no selections explicitly hides all tabs. Settings persist in `application_type_settings` and apply immediately to existing and new applications of the matching category, independently of workflow templates.
 
-Application records show the enabled tabs beneath the summary. Links use `?tab=<key>#application-tabs`, support browser history and work without JavaScript. Missing, disabled, unknown or malformed tab selections fall back to the first enabled tab; an empty configuration shows an explanatory message. Summary and notes remain available. Tab panels are explicitly work in progress, with no invented content or actions. Existing application assignment access remains enforced.
+Application records show the enabled tabs beneath the summary. Links use `?tab=<key>#application-tabs`, support browser history and work without JavaScript. Missing, disabled, unknown or malformed tab selections fall back to the first enabled tab; an empty configuration shows an explanatory message. Summary and notes remain available. The shared sticky-note section appears once: inside the Notes tab when selected, otherwise below the tabs, including on nomination records. Tab panels are explicitly work in progress, with no invented content or actions. Existing application assignment access remains enforced.
 
 Deployment: run `php artisan migrate` and `npm run build`. Verification: `php artisan test --filter=ApplicationTabsTest` covers defaults, each panel, persisted per-type settings, empty settings, stale links, validation, administrator permissions and assignment access.
 
@@ -43,6 +43,8 @@ Validation: `php artisan test --filter=ApplicationSummaryTest` covers all six ty
 ## Create Application (PSC-33)
 
 Client and linked Lead records now share `components/applications/create-modal.blade.php`. It opens a native dialog with keyboard focus containment, Escape/Cancel, searchable choices, conditional required fields, validation messages, and restored selections after a failed submission. Application Type starts blank. Individual services are Study and 500 Visa, Study, Visa, Assessment, ART Appeal, and Citizenship; organisation services are excluded.
+
+Conditional choices, including Subclass and Migration Agent, use one dropdown control per field. Search appears inside the opened dropdown, with arrow-key navigation, Enter to select, Escape to close, and an empty-results message. The selected value is submitted through the existing form field, with required selections enforced before submission.
 
 `POST /clients/{clientId}/applications` creates applications for the source client. Its existing PSC-38 Lead-only payload remains compatible. `POST /leads/{leadId}/applications` uses the same office/assignee access scope as the Lead record, derives client ownership from that Lead, and converts it only after successful application creation. Client IDs in these URLs are public client IDs, while application ownership and `source_lead_id` use database primary keys. Submitted owner and staff overrides cannot replace the source client or creator.
 

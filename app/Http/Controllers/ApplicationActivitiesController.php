@@ -16,7 +16,7 @@ class ApplicationActivitiesController extends Controller
         $record = Application::query()->assignedTo($request->user())->whereNotNull('organisation_id')
             ->whereIn('category', ['SBS', 'Nomination'])->findOrFail($application);
         $kind = $request->validate(['kind' => ['required', Rule::in(array_keys(ApplicationActivity::TABS)),
-            Rule::in(array_keys(ApplicationTypeSetting::tabsFor($record->category)))]]);
+            Rule::in(array_keys(ApplicationTypeSetting::tabsFor($record->category, $record->sponsor_type)))]]);
         $financial = in_array($kind['kind'], ['payments', 'quotes'], true);
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'], 'status' => ['nullable', 'string', 'max:80'],

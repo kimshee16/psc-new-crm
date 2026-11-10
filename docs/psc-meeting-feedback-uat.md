@@ -26,6 +26,8 @@
 ### CV2P-158, CV2P-165, CV2P-167 — Shared and inline notes
 
 - Introduced one reusable sticky-note component for Clients, Leads and Applications, preserving the yellow/green/blue card styling.
+- Client-linked Leads and Applications now read and save the same Client notes, including internal nomination nominees. Notes written from any linked record appear on the Client and its other linked records after refresh. Existing Client note-management permissions still control shared-note edits; source Lead/Application access is checked first. Records without a linked Client keep their own notes. Earlier record-specific notes remain available read-only under Earlier Lead/Application Notes without being copied or overwritten.
+- Leads and Applications provide a Notes shortcut in the record header and expand Add Note automatically when the record has no notes. Application Notes remain visible when another configured tab is selected, without duplicating the section on the Notes tab.
 - Added independent Add, Edit and Remove actions, with multiline text and newest-created notes first/leftmost.
 - Author and creation time come from the authenticated user and server. Editing preserves the original author/time and displays the latest editor/time separately.
 - Client Notes can be maintained without acquiring the whole-record edit lock. Notes also save independently of Lead and Application forms.

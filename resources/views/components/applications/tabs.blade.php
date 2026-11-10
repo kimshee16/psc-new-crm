@@ -1,4 +1,4 @@
-@props(['application', 'tabs', 'activeTab', 'activities' => null])
+@props(['application', 'tabs', 'activeTab', 'activities' => null, 'nominations' => null])
 
 <section id="application-tabs" class="mt-6 min-w-0 rounded-lg border border-slate-200 bg-white shadow-sm" aria-label="Application details">
     @if ($tabs)
@@ -13,7 +13,9 @@
         <section class="p-6" aria-labelledby="application-tab-{{ $activeTab }}">
             <h2 class="text-lg font-bold">{{ $tabs[$activeTab] }}</h2>
             @if ($activeTab === 'notes')
-                <x-record-notes :stored="$application->notes" module="applications" :record-id="$application->id" :editable="true" />
+                <x-related-record-notes :record="$application" module="applications" :record-id="$application->id" />
+            @elseif ($activeTab === 'nominations' && $nominations !== null)
+                @include('crm.applications.sbs-nominations')
             @elseif ($activities !== null)
                 <x-applications.activity-records :activities="$activities" :kind="$activeTab" />
                 @include('crm.organisations.activity-form', ['application' => $application, 'kind' => $activeTab])

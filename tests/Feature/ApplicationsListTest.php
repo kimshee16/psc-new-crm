@@ -51,7 +51,9 @@ class ApplicationsListTest extends TestCase
             ->assertViewHas('applications', fn ($rows) => $rows->pluck('id')->all() === [$multiple->id, $agent->id, $secondary->id, $primary->id])
             ->assertDontSee('Unassigned')->assertDontSee('Open application in a new tab')
             ->assertSee('href="'.route('applications.show', $primary->id).'"', false)
-            ->assertSee('href="'.route('clients.show', $primary->client->client_id).'"', false)
+            ->assertDontSee('href="'.route('clients.show', $primary->client->client_id).'"', false)
+            ->assertSee('>00001</a>', false)
+            ->assertSee('>00002</a>', false)
             ->assertSee('Ana Maria Santos');
         $csv = $this->get('/applications/export')->assertOk()->streamedContent();
         $this->assertCount(5, $this->csvRows($csv));

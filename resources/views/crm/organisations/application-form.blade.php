@@ -24,10 +24,9 @@
                 $value = $field === 'nominee_client_reference' ? $application->nomineeClient?->client_id : ($date ? $application->$field?->format('Y-m-d') : $application->$field);
             @endphp
             <label class="block text-sm font-semibold" for="{{ $field }}">{{ $label }}{{ in_array($field, ['sponsor_type', 'nominated_position_title']) ? ' *' : '' }}
-                <input id="{{ $field }}" name="{{ $field }}" type="{{ $date ? 'date' : ($number ? 'number' : 'text') }}" @if($number) min="1" step="1" @endif @if($field === 'sponsor_type') list="sponsor-types" @endif value="{{ old($field, $value) }}" @required(in_array($field, ['sponsor_type', 'nominated_position_title'])) maxlength="255" class="mt-2 block w-full rounded-md border border-slate-300 px-3 py-2 font-normal">
+                <input id="{{ $field }}" name="{{ $field }}" type="{{ $date ? 'date' : ($number ? 'number' : 'text') }}" @if($number) min="1" step="1" @endif @readonly($field === 'sponsor_type' && $application->exists) value="{{ old($field, $value) }}" @required(in_array($field, ['sponsor_type', 'nominated_position_title'])) maxlength="255" class="mt-2 block w-full rounded-md border border-slate-300 px-3 py-2 font-normal">
             </label>
         @endforeach
-        @if($sbs)<datalist id="sponsor-types"><option value="Standard Business Sponsor"><option value="Accredited Business Sponsor"><option value="Labour Agreement"></datalist>@endif
         @if (! $sbs)<p class="text-sm text-slate-500">The nominee can be recorded without a Client ID. When linked, the client's name is used if Nominee Name is blank. Manage visa links using Link/Unlink items on the application record.</p>@endif
         @if (! $application->exists)<p class="text-sm text-slate-500">The application starts as Not Started and is assigned to you. Update status, counsellors and migration agent in its Summary.</p>@endif
         <button type="submit" class="rounded-md bg-[#1f7890] px-5 py-2.5 text-sm font-semibold text-white">{{ $application->exists ? 'Save details' : ($sbs ? 'Create sponsorship' : 'Create nomination') }}</button>

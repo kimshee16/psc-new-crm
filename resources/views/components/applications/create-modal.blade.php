@@ -20,6 +20,15 @@
     .application-create-dialog :focus-visible { outline: 2px solid #1f7890; outline-offset: 2px; }
     .application-create-dialog [hidden] { display: none; }
     .application-create-help { color: #64748b; font-size: 13px; line-height: 1.5; }
+    .application-create-picker { position: relative; margin-top: 7px; }
+    .application-create-picker > button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 40px; padding: 8px 10px; background: white; text-align: left; font-weight: 400; }
+    .application-create-picker > button::after { content: ''; width: 7px; height: 7px; border-right: 2px solid #475569; border-bottom: 2px solid #475569; transform: rotate(45deg); flex-shrink: 0; margin: 0 3px 4px; }
+    .application-create-picker-menu { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0; padding: 8px; border: 1px solid #b9c1cc; border-radius: 6px; background: white; box-shadow: 0 8px 24px #0f172a26; }
+    .application-create-picker-menu input[type="search"] { margin-top: 0; }
+    .application-create-options { max-height: 180px; overflow-y: auto; margin-top: 6px; }
+    .application-create-options button { display: block; width: 100%; padding: 9px 10px; border: 0; border-radius: 4px; background: white; text-align: left; font-weight: 400; }
+    .application-create-options button:hover, .application-create-options button[data-active], .application-create-options button[aria-selected="true"] { background: #eaf7fc; color: #123348; }
+    .application-create-picker-error { margin-top: 6px; color: #b91c1c; font-size: 12px; }
 </style>
 <dialog id="application-create-dialog" class="application-create-dialog" aria-labelledby="application-create-heading">
     <form method="POST" action="{{ $action }}">
@@ -53,10 +62,19 @@
                 'migration_agent_id' => 'Migration Agent',
             ] as $name => $label)
                 <div data-field="{{ $name }}" hidden>
-                    <label for="create-{{ $name }}">{{ $label }} <span data-required aria-hidden="true">*</span></label>
-                    <input type="search" data-search="{{ $name }}" aria-label="Search {{ $label }}" aria-controls="create-{{ $name }}" placeholder="Search {{ strtolower($label) }}" autocomplete="off" disabled>
-                    <select id="create-{{ $name }}" name="{{ $name }}" disabled><option value="">Select {{ strtolower($label) }}</option></select>
-                    <p data-empty hidden class="application-create-help">No matching choices.</p>
+                    <label id="create-{{ $name }}-label" for="create-{{ $name }}">{{ $label }} <span data-required aria-hidden="true">*</span></label>
+                    <div class="application-create-picker">
+                        <button id="create-{{ $name }}" type="button" data-picker-trigger aria-haspopup="listbox" aria-expanded="false" aria-controls="create-{{ $name }}-options" aria-labelledby="create-{{ $name }}-label create-{{ $name }}-selected" aria-describedby="create-{{ $name }}-error" disabled>
+                            <span id="create-{{ $name }}-selected" data-selected>Select an option</span>
+                        </button>
+                        <div class="application-create-picker-menu" data-picker-menu hidden>
+                            <input type="search" data-search="{{ $name }}" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-label="Search {{ $label }}" aria-controls="create-{{ $name }}-options" placeholder="Search {{ strtolower($label) }}" autocomplete="off" disabled>
+                            <div id="create-{{ $name }}-options" class="application-create-options" data-options role="listbox" aria-labelledby="create-{{ $name }}-label"></div>
+                            <p data-empty hidden class="application-create-help">No matching choices.</p>
+                        </div>
+                    </div>
+                    <select name="{{ $name }}" hidden aria-hidden="true" tabindex="-1" disabled><option value="">Select {{ strtolower($label) }}</option></select>
+                    <p id="create-{{ $name }}-error" data-picker-error hidden class="application-create-picker-error">Select {{ strtolower($label) }}.</p>
                 </div>
             @endforeach
             <p data-agent-default hidden class="application-create-help"></p>
@@ -82,18 +100,80 @@
     const leadOnly = form.elements.create_lead;
     const fields = {};
     let restoring = true;
+    let invalidPicker = null;
 
     dialog.querySelectorAll('[data-field]').forEach(wrapper => {
         const name = wrapper.dataset.field;
-        fields[name] = { wrapper, select: form.elements[name], search: wrapper.querySelector('input'), choices: [], enabled: false };
+        fields[name] = {
+            wrapper, select: form.elements[name], search: wrapper.querySelector('input'),
+            button: wrapper.querySelector('[data-picker-trigger]'), menu: wrapper.querySelector('[data-picker-menu]'),
+            options: wrapper.querySelector('[data-options]'), choices: [], enabled: false, active: -1,
+        };
     });
-    const paint = (field, selected) => {
+    const filter = field => {
         const query = field.search.value.trim().toLocaleLowerCase();
-        const choices = field.choices.filter(choice => String(choice.id) === selected || choice.name.toLocaleLowerCase().includes(query));
-        field.select.replaceChildren(new Option('Select an option', ''));
-        choices.forEach(choice => field.select.add(new Option(choice.name, String(choice.id))));
-        field.select.value = selected;
+        const choices = field.choices.filter(choice => choice.name.toLocaleLowerCase().includes(query));
+        field.options.replaceChildren();
+        const addOption = (value, label) => {
+            const option = document.createElement('button');
+            option.type = 'button';
+            option.tabIndex = -1;
+            option.id = field.options.id + '-' + field.options.children.length;
+            option.setAttribute('role', 'option');
+            option.setAttribute('aria-selected', String(value === field.select.value));
+            option.dataset.value = value;
+            option.textContent = label;
+            field.options.append(option);
+        };
+        if (!field.select.required) addOption('', 'None');
+        choices.forEach(choice => addOption(String(choice.id), choice.name));
         field.wrapper.querySelector('[data-empty]').hidden = choices.length > 0;
+        field.active = -1;
+        field.search.removeAttribute('aria-activedescendant');
+    };
+    const closePicker = field => {
+        field.menu.hidden = true;
+        field.button.setAttribute('aria-expanded', 'false');
+        field.search.setAttribute('aria-expanded', 'false');
+        field.search.removeAttribute('aria-activedescendant');
+    };
+    const activate = (field, index) => {
+        const options = [...field.options.children];
+        if (!options.length) return;
+        field.active = (index + options.length) % options.length;
+        options.forEach((option, i) => option.toggleAttribute('data-active', i === field.active));
+        field.search.setAttribute('aria-activedescendant', options[field.active].id);
+        options[field.active].scrollIntoView({block: 'nearest'});
+    };
+    const openPicker = field => {
+        if (!field.enabled) return;
+        Object.values(fields).forEach(closePicker);
+        field.search.value = '';
+        filter(field);
+        field.menu.hidden = false;
+        field.button.setAttribute('aria-expanded', 'true');
+        field.search.setAttribute('aria-expanded', 'true');
+        field.search.focus();
+    };
+    const choose = (field, value) => {
+        field.select.value = value;
+        field.wrapper.querySelector('[data-selected]').textContent = field.select.selectedOptions[0]?.textContent || 'Select an option';
+        field.button.removeAttribute('aria-invalid');
+        field.wrapper.querySelector('[data-picker-error]').hidden = true;
+        closePicker(field);
+        field.button.focus();
+        field.select.dispatchEvent(new Event('change', {bubbles: true}));
+    };
+    const paint = (field, selected) => {
+        field.select.replaceChildren(new Option('Select an option', ''));
+        field.choices.forEach(choice => field.select.add(new Option(choice.name, String(choice.id))));
+        field.select.value = selected;
+        field.wrapper.querySelector('[data-selected]').textContent = field.select.selectedOptions[0]?.textContent || 'Select an option';
+        if (!field.enabled || field.select.value) {
+            field.button.removeAttribute('aria-invalid');
+            field.wrapper.querySelector('[data-picker-error]').hidden = true;
+        }
+        filter(field);
     };
     const setField = (name, enabled, choices = [], required = true) => {
         const field = fields[name];
@@ -101,7 +181,8 @@
         field.choices = choices;
         field.enabled = enabled;
         field.wrapper.hidden = !enabled;
-        field.select.disabled = field.search.disabled = !enabled;
+        field.select.disabled = field.search.disabled = field.button.disabled = !enabled;
+        if (!enabled) closePicker(field);
         field.select.required = enabled && required;
         field.wrapper.querySelector('[data-required]').hidden = !required;
         paint(field, enabled ? selected : '');
@@ -130,9 +211,51 @@
         dialog.querySelector('[data-lead-help]').hidden = !leadOnly.checked;
     };
     Object.values(fields).forEach(field => {
-        field.search.addEventListener('input', () => paint(field, field.select.value));
+        field.button.addEventListener('click', () => field.menu.hidden ? openPicker(field) : closePicker(field));
+        field.button.addEventListener('keydown', event => {
+            if (['ArrowDown', 'ArrowUp'].includes(event.key)) {
+                event.preventDefault();
+                openPicker(field);
+                activate(field, event.key === 'ArrowDown' ? 0 : field.options.children.length - 1);
+            }
+        });
+        field.search.addEventListener('input', () => filter(field));
         field.search.addEventListener('keydown', event => {
-            if (event.key === 'Enter') event.preventDefault();
+            if (['ArrowDown', 'ArrowUp'].includes(event.key)) {
+                event.preventDefault();
+                activate(field, field.active < 0 ? (event.key === 'ArrowDown' ? 0 : field.options.children.length - 1) : field.active + (event.key === 'ArrowDown' ? 1 : -1));
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                const option = field.options.children[Math.max(field.active, 0)];
+                if (option) choose(field, option.dataset.value);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                closePicker(field);
+                field.button.focus();
+            }
+        });
+        field.options.addEventListener('click', event => {
+            const option = event.target.closest('[role="option"]');
+            if (option) choose(field, option.dataset.value);
+        });
+        field.wrapper.addEventListener('focusout', event => {
+            if (!field.wrapper.contains(event.relatedTarget)) closePicker(field);
+        });
+        field.select.addEventListener('invalid', event => {
+            event.preventDefault();
+            field.button.setAttribute('aria-invalid', 'true');
+            field.wrapper.querySelector('[data-picker-error]').hidden = false;
+            if (!invalidPicker) {
+                invalidPicker = field;
+                openPicker(field);
+                queueMicrotask(() => { invalidPicker = null; });
+            }
+        });
+    });
+    dialog.addEventListener('click', event => {
+        Object.values(fields).forEach(field => {
+            if (!field.wrapper.contains(event.target)) closePicker(field);
         });
     });
     ['application_workflow_id', 'visa_workflow_id'].forEach(name => fields[name].select.addEventListener('change', sync));
@@ -149,7 +272,7 @@
     trigger?.setAttribute('aria-controls', dialog.id);
     trigger?.addEventListener('click', () => dialog.showModal());
     dialog.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => dialog.close()));
-    dialog.addEventListener('close', () => trigger?.focus());
+    dialog.addEventListener('close', () => { Object.values(fields).forEach(closePicker); trigger?.focus(); });
     form.addEventListener('submit', () => {
         form.querySelector('[type="submit"]').disabled = true;
         form.querySelector('[type="submit"]').textContent = 'Creating…';

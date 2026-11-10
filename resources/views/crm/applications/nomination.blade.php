@@ -23,6 +23,7 @@
             <p class="mt-1 text-sm text-slate-500">Nomination record</p>
         </div>
         <div class="flex flex-wrap items-center gap-3">
+            <a href="#applications-{{ $application->id }}-notes" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-[#1f7890]">Notes</a>
             <details class="relative">
                 <summary class="cursor-pointer rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold">Actions</summary>
                 <div class="absolute right-0 z-20 mt-2 w-60 space-y-3 rounded-lg border border-slate-200 bg-white p-4 text-sm shadow-lg">
@@ -135,6 +136,8 @@
     </form>
     <x-applications.linked-items :application="$application" :items="$linkedItems" />
     <x-applications.tabs :application="$application" :tabs="$applicationTabs" :active-tab="$activeApplicationTab" :activities="$activities" />
-    @if(!isset($applicationTabs['notes']))<x-record-notes :stored="$application->notes" module="applications" :record-id="$application->id" :editable="true" />@endif
+    @if ($activeApplicationTab !== 'notes')
+        <x-related-record-notes :record="$application" module="applications" :record-id="$application->id" />
+    @endif
     @include('crm.applications.nomination-script')
 @endsection

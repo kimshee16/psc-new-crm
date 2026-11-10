@@ -17,6 +17,7 @@
                     <legend class="font-bold">{{ $label }}</legend>
                     <div class="mt-4 flex flex-wrap gap-x-6 gap-y-3">
                         @foreach ($applicationTabOptions as $key => $tabLabel)
+                            @continue($key === 'nominations' && $category !== 'SBS')
                             <label class="flex items-center gap-2 text-sm">
                                 <input type="checkbox" name="tabs[]" value="{{ $key }}" @checked(in_array($key, $selectedTabs, true)) class="h-4 w-4 accent-[#1f7890]">
                                 {{ $tabLabel }}

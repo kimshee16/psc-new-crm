@@ -24,6 +24,13 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ClientsController extends Controller
 {
+    public function canManageNotes(Client $client, User $user): bool
+    {
+        return $this->canManageClientNotes($user, $client->only([
+            'primary_counsellor', 'secondary_counsellor', 'migration_agent',
+        ]));
+    }
+
     public function noteRecord(string $clientId, User $user): Client
     {
         $profile = $this->clientProfileFor($clientId, $user);

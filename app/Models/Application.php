@@ -34,7 +34,9 @@ class Application extends Model
     {
         return match ($this->category) {
             'Visa' => [...self::STATUSES, 'Granted'],
-            'SBS' => [...self::STATUSES, 'Active'],
+            'SBS' => strcasecmp(trim((string) $this->sponsor_type), 'Labour Agreement') === 0
+                ? [...self::STATUSES, 'Active']
+                : ['Not Started', 'In Progress', 'Withdrawn', 'Pending Decision', 'Appealing', 'Active', 'Expired', 'Finalised - Refused'],
             'Nomination' => ['Not Started', 'In Progress', 'Withdrawn', 'Pending Decision', 'Appealing', 'Finalised'],
             default => self::STATUSES,
         };
@@ -52,6 +54,7 @@ class Application extends Model
         'sponsorship_id', 'anzsco_code', 'annual_salary', 'lodgement_date', 'reference_number',
         'outcome_date', 'appeal_deadline', 'appeal_status', 'art_case_number',
         'final_outcome', 'final_outcome_date', 'google_drive_url',
+        'initial_consultation', 'service_agreement', 'supporting_documents', 'application_stage',
     ];
 
     protected function casts(): array

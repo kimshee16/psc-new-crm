@@ -14,3 +14,9 @@ Artisan::command('visas:apply-grants', function (VisaGrants $grants) {
 })->purpose('Apply granted visas whose effective date has arrived');
 
 Schedule::command('visas:apply-grants')->everyMinute()->withoutOverlapping();
+
+Artisan::command('sbs:expire', function (\App\Support\PSC\SbsRecord $records) {
+    $this->info('Expired '.$records->expireDue().' SBS record(s).');
+})->purpose('Expire SBS records when their expiry date is reached');
+
+Schedule::command('sbs:expire')->everyMinute()->withoutOverlapping();

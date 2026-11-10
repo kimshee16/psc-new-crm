@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
+use App\Models\ApplicationWorkflow;
 use App\Models\Client;
 use App\Models\Organisation;
 use App\Support\PSC\ApplicationLinks;
 use App\Support\PSC\ApplicationSummary;
 use App\Support\PSC\NominationCreation;
 use App\Support\PSC\NominationRecord;
+use App\Support\PSC\SbsRecord;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -58,6 +60,10 @@ class OrganisationApplicationsController extends Controller
         $record = Organisation::query()->visibleTo($request->user())->findOrFail($organisation);
         $identity = $request->validate(['category' => ['required', Rule::in(['SBS', 'Nomination'])]]);
         $data = $this->details($request, $identity['category']);
+        if ($identity['category'] === 'SBS' && $data['sponsor_type'] !== 'Labour Agreement') {
+            $workflow = ApplicationWorkflow::query()->where('category', 'SBS')->orderBy('id')->first();
+            $data += ['application_workflow_id' => $workflow?->id, 'migration_agent_id' => $workflow?->migration_agent_id];
+        }
         $visa = $data['visa_application_id'] ?? null;
         unset($data['visa_application_id']);
         $application = DB::transaction(function () use ($record, $request, $identity, $data, $visa, $links) {
@@ -84,7 +90,7 @@ class OrganisationApplicationsController extends Controller
     {
         $record = $this->record($request, $application);
 
-        if ($record->category === 'Nomination') {
+        if ($record->category === 'Nomination' || SbsRecord::supports($record)) {
             return app(ApplicationsController::class)->show($request, $application, app(ApplicationSummary::class), app(ApplicationLinks::class));
         }
 
@@ -96,6 +102,11 @@ class OrganisationApplicationsController extends Controller
     public function update(Request $request, int $application): RedirectResponse
     {
         $record = $this->record($request, $application);
+        if (SbsRecord::supports($record)) {
+            app(SbsRecord::class)->update($request->user(), $application, $request->all(), false);
+
+            return redirect()->route('applications.show', $record)->with('success', 'SBS details saved.');
+        }
         if ($record->category === 'Nomination') {
             app(NominationRecord::class)->update($request->user(), $application, $request->all(), false);
 
@@ -129,6 +140,12 @@ class OrganisationApplicationsController extends Controller
         }
         if ($sbs && $creating) {
             $rules['sponsor_type'][] = Rule::in(['Standard Business Sponsor', 'Labour Agreement']);
+            if ($request->input('sponsor_type') === 'Standard Business Sponsor') {
+                $rules['trn'][] = 'regex:/^[A-Za-z0-9]{13}$/';
+            }
+        }
+        if ($sbs && ! $creating) {
+            $rules['sponsor_type'][] = Rule::in([$record->sponsor_type]);
         }
         $rules['approval_date'] = $sbs ? ['nullable', 'date_format:Y-m-d'] : ['prohibited'];
         $rules['expiry_date'] = $sbs ? ['nullable', 'date_format:Y-m-d', ...($request->filled('approval_date') ? ['after_or_equal:approval_date'] : [])] : ['prohibited'];
@@ -151,6 +168,10 @@ class OrganisationApplicationsController extends Controller
         $data = $request->validate($rules, [], [
             'nominee_client_reference' => 'nominee', 'nominee_name' => 'nominee name', 'visa_subclass' => 'visa subclass',
         ]);
+        if ($sbs && $creating && $data['sponsor_type'] !== 'Labour Agreement' && filled($data['approval_date'] ?? null)) {
+            $request->validate(['expiry_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:approval_date']]);
+            $data += ['outcome' => 'Approved', 'outcome_date' => $data['approval_date']];
+        }
         if (! $sbs && $creating) {
             $external = $request->boolean('external_nominee');
             $data['nominee_client_reference'] = $external ? null : $data['nominee_client_reference'];

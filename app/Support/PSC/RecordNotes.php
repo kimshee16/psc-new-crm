@@ -2,6 +2,8 @@
 
 namespace App\Support\PSC;
 
+use App\Models\Application;
+use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -11,6 +13,19 @@ use Illuminate\Validation\ValidationException;
 
 class RecordNotes
 {
+    public function owner(Model $record): Model
+    {
+        if ($record instanceof Lead) {
+            return $record->client ?? $record;
+        }
+
+        if ($record instanceof Application) {
+            return $record->client ?? ($record->category === 'Nomination' ? $record->nomineeClient : null) ?? $record;
+        }
+
+        return $record;
+    }
+
     public function version(?string $stored): string
     {
         return hash('sha256', (string) $stored);

@@ -10,6 +10,7 @@ use App\Support\PSC\ApplicationList;
 use App\Support\PSC\ApplicationSummary;
 use App\Support\PSC\CriticalDateFormatting;
 use App\Support\PSC\NominationRecord;
+use App\Support\PSC\SbsRecord;
 use App\Support\PSC\VisaGrants;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -63,19 +64,21 @@ class ApplicationsController extends Controller
             ->with(['client', 'organisation', 'workflow', 'primaryCounsellor', 'secondaryCounsellor', 'migrationAgent', 'nomineeClient'])
             ->findOrFail($application);
 
-        $tabs = ApplicationTypeSetting::tabsFor($record->category);
+        $tabs = ApplicationTypeSetting::tabsFor($record->category, $record->sponsor_type);
         $requestedTab = $request->query('tab');
         $activeTab = is_string($requestedTab) && array_key_exists($requestedTab, $tabs)
             ? $requestedTab : array_key_first($tabs);
 
         $nomination = $record->category === 'Nomination' && $record->organisation_id;
         $nominationData = $nomination ? app(NominationRecord::class)->viewData($record, $request->user()) : [];
+        $sbs = SbsRecord::supports($record);
 
-        return view($nomination ? 'crm.applications.nomination' : 'crm.applications.show', [
+        return view($nomination ? 'crm.applications.nomination' : ($sbs ? 'crm.applications.sbs' : 'crm.applications.show'), [
             'title' => 'PSC CRM - Application '.$application,
             'application' => $record,
             'applicationTabs' => $tabs,
             'activeApplicationTab' => $activeTab,
+            'nominations' => $sbs && $activeTab === 'nominations' ? app(SbsRecord::class)->nominations($record, $request->user()) : null,
             'linkedItems' => $links->rows($record, $request->user())->get(),
             'activities' => $record->organisation_id && in_array($record->category, ['SBS', 'Nomination'], true)
                 && isset(ApplicationActivity::TABS[$activeTab ?? ''])
@@ -85,18 +88,20 @@ class ApplicationsController extends Controller
 
     public function update(Request $request, int $application, ApplicationSummary $summary, VisaGrants $grants): RedirectResponse
     {
-        $isNomination = Application::query()->assignedTo($request->user())->whereKey($application)
-            ->where('category', 'Nomination')->whereNotNull('organisation_id')->exists();
+        $visible = Application::query()->assignedTo($request->user())->findOrFail($application);
+        $isNomination = $visible->category === 'Nomination' && $visible->organisation_id;
+        $isSbs = SbsRecord::supports($visible);
         $record = $isNomination
             ? app(NominationRecord::class)->update($request->user(), $application, $request->all())
-            : $grants->updateApplication($request->user(), $application, $request->all(), $summary);
+            : ($isSbs ? app(SbsRecord::class)->update($request->user(), $application, $request->all())
+                : $grants->updateApplication($request->user(), $application, $request->all(), $summary));
 
         // Reassigning the final role away also removes access to this record.
         $route = Application::query()->assignedTo($request->user())->whereKey($record->id)->exists()
             ? redirect()->route('applications.show', $record->id)
             : redirect()->route('applications');
 
-        return $route->with('success', $isNomination ? 'Nomination application saved.' : 'Application summary saved.');
+        return $route->with('success', $isNomination ? 'Nomination application saved.' : ($isSbs ? 'SBS application saved.' : 'Application summary saved.'));
     }
 
     private function filters(Request $request): array

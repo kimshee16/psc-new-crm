@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PSC\SbsRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -14,6 +15,26 @@ class ApplicationActivity extends Model
     public const TASK_STATUSES = ['Pending', 'In progress', 'Done'];
 
     protected $fillable = ['kind', 'title', 'status', 'reference', 'due_date', 'amount', 'currency', 'assigned_to_user_id'];
+
+    protected static function booted(): void
+    {
+        static::saved(function (ApplicationActivity $activity): void {
+            if ($activity->kind !== 'agreements' || ! $activity->wasChanged(['status', 'kind']) && ! $activity->wasRecentlyCreated) {
+                return;
+            }
+            $application = $activity->application;
+            if ($application && SbsRecord::supports($application)) {
+                $stage = match (strtolower(trim((string) $activity->status))) {
+                    'sent', 'sent - pending client' => 'Sent - Pending Client',
+                    'signed', 'digitally signed' => 'Signed',
+                    default => null,
+                };
+                if ($stage) {
+                    $application->update(['service_agreement' => $stage]);
+                }
+            }
+        });
+    }
 
     public function assignee(): BelongsTo
     {

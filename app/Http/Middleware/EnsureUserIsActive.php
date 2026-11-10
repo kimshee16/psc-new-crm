@@ -19,6 +19,11 @@ class EnsureUserIsActive
             return redirect()->route('login')->withErrors(['email' => 'Your account access is restricted. Contact your administrator.']);
         }
 
+        if ($request->user()) {
+            // Keep records, lists and nomination defaults current even between scheduler runs.
+            app(\App\Support\PSC\SbsRecord::class)->expireDue();
+        }
+
         return $next($request);
     }
 }

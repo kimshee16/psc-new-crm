@@ -83,20 +83,20 @@ class OrganisationsTest extends TestCase
             ->assertRedirect(route('organisations.show', ['organisation' => $organisation, 'add_sponsorship' => 1]));
         $this->post(route('organisations.applications.store', $organisation), [
             'category' => 'SBS', 'sponsor_type' => 'Standard Business Sponsor', 'approval_date' => '2026-10-01',
-            'expiry_date' => '2031-10-01', 'home_affairs_reference' => 'HA-123', 'trn' => 'TRN-456',
+            'expiry_date' => '2031-10-01', 'home_affairs_reference' => 'HA-123', 'trn' => 'ABC1234567890',
             'client_id' => 999, 'organisation_id' => 999, 'primary_counsellor_id' => 999,
         ])->assertSessionHasNoErrors();
         $application = Application::sole();
         $this->assertSame($organisation->id, $application->organisation_id);
         $this->assertNull($application->client_id);
         $this->assertSame($user->id, $application->primary_counsellor_id);
-        $this->get(route('applications.show', $application))->assertOk()->assertSee('SBS Details')->assertSee('TRN-456');
-        $this->get(route('applications.organisation-details.edit', $application))->assertOk()->assertSee('TRN-456');
+        $this->get(route('applications.show', $application))->assertOk()->assertSee('Sponsorship')->assertSee('ABC1234567890');
+        $this->get(route('applications.organisation-details.edit', $application))->assertOk()->assertSee('ABC1234567890');
         $this->patch(route('applications.organisation-details.update', $application), [
-            'sponsor_type' => 'Updated sponsor', 'trn' => 'TRN-789', 'approval_date' => '2026-10-02', 'expiry_date' => '2031-10-02',
+            'trn' => 'XYZ1234567890', 'outcome' => 'Approved', 'outcome_date' => '2026-10-02', 'expiry_date' => '2031-10-02',
         ])->assertSessionHasNoErrors();
-        $this->get(route('organisations.show', $organisation))->assertOk()->assertSee('Updated sponsor')
-            ->assertSee('02 Oct 2031')->assertSee('TRN-789')->assertSee($user->name)
+        $this->get(route('organisations.show', $organisation))->assertOk()->assertSee('Standard Business Sponsor')
+            ->assertSee('02 Oct 2031')->assertSee('XYZ1234567890')->assertSee($user->name)
             ->assertSee('href="'.route('applications.show', $application).'"', false);
     }
 

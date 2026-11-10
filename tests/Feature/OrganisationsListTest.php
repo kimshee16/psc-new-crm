@@ -60,8 +60,8 @@ class OrganisationsListTest extends TestCase
             ['Standard Business Sponsor', '2027-03-05', 'Active', 'SBS', 1, 0],
             ['Accredited', '2027-01-04', 'Active', 'SBS', 1, 1],
             ['Accredited Business Sponsor', '2027-01-05', 'Active', 'SBS', 1, 0],
-            [' accredited sponsor ', '2026-11-04', ' active ', 'SBS', 1, 1],
-            ['Standard', '2026-11-03', 'Active', 'SBS', 1, 0],
+            [' accredited sponsor ', '2026-11-04', ' active ', 'SBS', 0, 0],
+            ['Standard', '2026-11-03', 'Active', 'SBS', 0, 0],
             ['Standard', null, 'Active', 'SBS', 1, 0],
             ['Unknown', '2026-12-01', 'Active', 'SBS', 1, 0],
             ['Standard', '2026-12-01', 'In Progress', 'SBS', 0, 0],
@@ -212,6 +212,7 @@ class OrganisationsListTest extends TestCase
         $this->actingAs($user)->get(route('applications.show', $sbs))->assertOk()->assertSee('value="Active"', false);
         $this->patch(route('applications.update', $sbs), [
             'status' => 'Active', 'priority' => 'M', 'primary_counsellor_id' => $user->id,
+            'migration_agent_id' => $user->id, 'trn' => 'ABC1234567890',
         ])->assertSessionHasNoErrors()->assertRedirect();
         $this->assertSame('Active', $sbs->fresh()->status);
         $this->get(route('organisations', ['sbs_held' => 'Y']))->assertOk()

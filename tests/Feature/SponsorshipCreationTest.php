@@ -38,7 +38,7 @@ class SponsorshipCreationTest extends TestCase
         $organisation = $this->organisation($user);
         $other = $this->organisation(User::factory()->create());
         $this->actingAs($user);
-        foreach (['Standard Business Sponsor' => ['SBS', 'SBS Application', 'SBS Details'],
+        foreach (['Standard Business Sponsor' => ['SBS', 'SBS Application', 'Sponsorship'],
             'Labour Agreement' => ['LAB', 'Labour Agreement Application', 'Labour Agreement Details']] as $type => [$prefix, $label, $details]) {
             $response = $this->post(route('organisations.applications.store', $organisation), [
                 '_add_sponsorship' => '1', 'category' => 'SBS', 'sponsor_type' => $type,

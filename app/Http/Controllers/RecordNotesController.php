@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
+use App\Models\Client;
 use App\Support\PSC\RecordNotes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,10 +25,16 @@ class RecordNotesController extends Controller
             'version' => ['required', 'string', 'size:64'],
             'body' => [$action === 'destroy' ? 'nullable' : 'required', 'string', 'max:10000'],
         ]);
-        $record = $notes->mutate($record, $request->user(), $data['version'], $action, $noteId, $data['body'] ?? null);
+        $owner = $notes->owner($record);
+        $sharedClient = ! $owner->is($record);
+        if ($owner instanceof Client) {
+            abort_unless(app(ClientsController::class)->canManageNotes($owner, $request->user()), 403);
+        }
+        $owner = $notes->mutate($owner, $request->user(), $data['version'], $action, $noteId, $data['body'] ?? null);
 
         return response()->json(['html' => view('components.record-notes', [
-            'stored' => $record->notes, 'module' => $module, 'recordId' => $recordId, 'editable' => true,
+            'stored' => $owner->notes, 'module' => $module, 'recordId' => $recordId, 'editable' => true,
+            'sharedClient' => $sharedClient,
             'notice' => $action === 'destroy' ? 'Note removed.' : 'Note saved.',
         ])->render()]);
     }

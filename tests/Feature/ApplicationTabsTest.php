@@ -30,9 +30,13 @@ class ApplicationTabsTest extends TestCase
 
         foreach (array_keys(ApplicationTypeSetting::types()) as $category) {
             $application = $this->application($user, $category);
-            $this->get(route('applications.show', $application))->assertOk()
+            $response = $this->get(route('applications.show', $application))->assertOk()
                 ->assertViewHas('applicationTabs', ApplicationTypeSetting::tabsFor($category))
-                ->assertViewHas('activeApplicationTab', $category === 'Nomination' ? 'notes' : 'tasks');
+                ->assertViewHas('activeApplicationTab', $category === 'Nomination' ? 'notes' : 'tasks')
+                ->assertSee('Application Notes')->assertSee('Add Note');
+            $this->assertSame(1, substr_count($response->getContent(), 'class="record-notes '));
+            $this->get(route('applications.show', ['application' => $application, 'tab' => 'tasks']))
+                ->assertOk()->assertSee('Application Notes')->assertSee('Add Note');
         }
 
         foreach (ApplicationTypeSetting::tabsFor('SBS') as $key => $label) {
@@ -41,6 +45,8 @@ class ApplicationTabsTest extends TestCase
                 ->assertSee('aria-current="page"', false);
             if (isset(ApplicationActivity::TABS[$key])) {
                 $response->assertSee('No '.strtolower($label).' records yet.')->assertSee('Save record');
+            } elseif ($key === 'nominations') {
+                $response->assertSee('No nominations reference this SBS.');
             } else {
                 $response->assertSee($label.' content is work in progress.');
             }
