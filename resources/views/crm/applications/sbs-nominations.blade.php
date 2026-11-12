@@ -1,4 +1,4 @@
-<p class="mt-2 text-sm text-slate-500">Nominations that reference this SBS. Set the sponsorship on the nomination record.</p>
+<p class="mt-2 text-sm text-slate-500">Nominations that reference this {{ $application->is_labour_agreement ? 'Labour Agreement' : 'SBS' }}. Set the sponsorship on the nomination record.</p>
 <div class="mt-4 overflow-x-auto">
     <table class="w-full text-left text-sm">
         <thead class="border-b border-slate-200 text-xs text-slate-500"><tr>
@@ -14,7 +14,7 @@
                     <td class="px-3 py-3">{{ $nomination->status }}</td>
                 </tr>
             @empty
-                <tr><td colspan="4" class="px-3 py-6 text-slate-500">No nominations reference this SBS.</td></tr>
+                <tr><td colspan="4" class="px-3 py-6 text-slate-500">No nominations reference this {{ $application->is_labour_agreement ? 'Labour Agreement' : 'SBS' }}.</td></tr>
             @endforelse
         </tbody>
     </table>

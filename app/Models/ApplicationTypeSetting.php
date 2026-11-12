@@ -45,17 +45,16 @@ class ApplicationTypeSetting extends Model
         }
 
         $setting = self::query()->where('category', $category)->first();
-        $labour = $category === 'SBS' && strcasecmp(trim((string) $sponsorType), 'Labour Agreement') === 0;
 
         // An absent setting inherits the defaults; an empty list disables all tabs.
         $defaults = match ($category) {
             'Nomination' => self::NOMINATION_TABS,
-            'SBS' => $labour ? self::DEFAULT_TABS : self::SBS_TABS,
+            'SBS' => self::SBS_TABS,
             default => self::DEFAULT_TABS,
         };
         $tabs = self::availableTabs($setting?->tabs ?? $defaults);
 
-        return $category === 'SBS' && ! $labour ? $tabs : array_diff_key($tabs, ['nominations' => true]);
+        return $category === 'SBS' ? $tabs : array_diff_key($tabs, ['nominations' => true]);
     }
 
     public static function availableTabs(array $tabs): array

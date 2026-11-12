@@ -60,7 +60,7 @@ class OrganisationApplicationsController extends Controller
         $record = Organisation::query()->visibleTo($request->user())->findOrFail($organisation);
         $identity = $request->validate(['category' => ['required', Rule::in(['SBS', 'Nomination'])]]);
         $data = $this->details($request, $identity['category']);
-        if ($identity['category'] === 'SBS' && $data['sponsor_type'] !== 'Labour Agreement') {
+        if ($identity['category'] === 'SBS') {
             $workflow = ApplicationWorkflow::query()->where('category', 'SBS')->orderBy('id')->first();
             $data += ['application_workflow_id' => $workflow?->id, 'migration_agent_id' => $workflow?->migration_agent_id];
         }
@@ -83,7 +83,7 @@ class OrganisationApplicationsController extends Controller
             return $application;
         });
 
-        return redirect()->route('applications.show', $application)->with('success', $application->category.' application created.');
+        return redirect()->route('applications.show', $application)->with('success', $application->is_labour_agreement ? 'Labour Agreement application created.' : $application->category.' application created.');
     }
 
     public function edit(Request $request, int $application): View
@@ -105,7 +105,7 @@ class OrganisationApplicationsController extends Controller
         if (SbsRecord::supports($record)) {
             app(SbsRecord::class)->update($request->user(), $application, $request->all(), false);
 
-            return redirect()->route('applications.show', $record)->with('success', 'SBS details saved.');
+            return redirect()->route('applications.show', $record)->with('success', $record->is_labour_agreement ? 'Labour Agreement details saved.' : 'SBS details saved.');
         }
         if ($record->category === 'Nomination') {
             app(NominationRecord::class)->update($request->user(), $application, $request->all(), false);
@@ -139,6 +139,9 @@ class OrganisationApplicationsController extends Controller
             $rules[$field] = $sbs ? [$field === 'sponsor_type' ? 'required' : 'nullable', 'string', 'max:255'] : ['prohibited'];
         }
         if ($sbs && $creating) {
+            if ($request->input('sponsor_type') === 'Labour Agreement') {
+                $rules['trn'] = ['missing'];
+            }
             $rules['sponsor_type'][] = Rule::in(['Standard Business Sponsor', 'Labour Agreement']);
             if ($request->input('sponsor_type') === 'Standard Business Sponsor') {
                 $rules['trn'][] = 'regex:/^[A-Za-z0-9]{13}$/';
@@ -168,7 +171,7 @@ class OrganisationApplicationsController extends Controller
         $data = $request->validate($rules, [], [
             'nominee_client_reference' => 'nominee', 'nominee_name' => 'nominee name', 'visa_subclass' => 'visa subclass',
         ]);
-        if ($sbs && $creating && $data['sponsor_type'] !== 'Labour Agreement' && filled($data['approval_date'] ?? null)) {
+        if ($sbs && $creating && filled($data['approval_date'] ?? null)) {
             $request->validate(['expiry_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:approval_date']]);
             $data += ['outcome' => 'Approved', 'outcome_date' => $data['approval_date']];
         }

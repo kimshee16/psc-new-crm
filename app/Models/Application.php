@@ -19,6 +19,11 @@ class Application extends Model
 
     public const PRIORITIES = ['L' => 'Low', 'M' => 'Medium', 'H' => 'High'];
 
+    public function getIsLabourAgreementAttribute(): bool
+    {
+        return $this->category === 'SBS' && strcasecmp(trim((string) $this->sponsor_type), 'Labour Agreement') === 0;
+    }
+
     public function getRecordReferenceAttribute(): string
     {
         $prefix = match ($this->category) {
@@ -34,9 +39,7 @@ class Application extends Model
     {
         return match ($this->category) {
             'Visa' => [...self::STATUSES, 'Granted'],
-            'SBS' => strcasecmp(trim((string) $this->sponsor_type), 'Labour Agreement') === 0
-                ? [...self::STATUSES, 'Active']
-                : ['Not Started', 'In Progress', 'Withdrawn', 'Pending Decision', 'Appealing', 'Active', 'Expired', 'Finalised - Refused'],
+            'SBS' => ['Not Started', 'In Progress', 'Withdrawn', 'Pending Decision', 'Appealing', 'Active', 'Expired', 'Finalised - Refused'],
             'Nomination' => ['Not Started', 'In Progress', 'Withdrawn', 'Pending Decision', 'Appealing', 'Finalised'],
             default => self::STATUSES,
         };

@@ -17,7 +17,7 @@
         field('expiry_date').disabled = !approved;
         field('expiry_date').required = approved;
         form.querySelector(refused ? '[data-final-expiry-slot]' : '[data-original-expiry-slot]').append(expiry);
-        field('trn').required = field('status').value === 'Active';
+        if (field('trn')) field('trn').required = field('status').value === 'Active';
     };
     ['outcome', 'final_outcome', 'appeal_status', 'status'].forEach(name => field(name).addEventListener('change', refresh));
     field('application_stage').addEventListener('change', () => {

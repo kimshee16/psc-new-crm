@@ -192,12 +192,12 @@ class SbsRecordTest extends TestCase
         $due = $this->sbs(['status' => 'Active', 'expiry_date' => '2026-11-10']);
         $future = $this->sbs(['status' => 'Active', 'expiry_date' => '2026-11-11']);
         $labour = $this->sbs(['status' => 'Active', 'sponsor_type' => 'Labour Agreement', 'expiry_date' => '2026-11-09']);
-        $this->artisan('sbs:expire')->expectsOutput('Expired 2 SBS record(s).')->assertSuccessful();
-        $this->artisan('sbs:expire')->expectsOutput('Expired 0 SBS record(s).')->assertSuccessful();
+        $this->artisan('sbs:expire')->expectsOutput('Expired 3 sponsorship record(s).')->assertSuccessful();
+        $this->artisan('sbs:expire')->expectsOutput('Expired 0 sponsorship record(s).')->assertSuccessful();
         $this->assertSame('Expired', $past->fresh()->status);
         $this->assertSame('Expired', $due->fresh()->status);
         $this->assertSame('Active', $future->fresh()->status);
-        $this->assertSame('Active', $labour->fresh()->status);
+        $this->assertSame('Expired', $labour->fresh()->status);
         $this->travelTo(now()->addDay());
         $this->get(route('applications.show', $future))->assertOk();
         $this->assertSame('Expired', $future->fresh()->status);

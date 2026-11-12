@@ -15,7 +15,7 @@
     <header class="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
             <nav aria-label="Breadcrumb" class="text-sm text-slate-500"><a href="{{ route('organisations') }}" class="text-[#1f7890] underline">Organisations</a> / <a href="{{ route('organisations.show', $application->organisation_id) }}" class="text-[#1f7890] underline">{{ $application->organisation->name }}</a> / {{ $application->record_reference }}</nav>
-            <h1 class="mt-3 text-[26px] font-bold">{{ $application->record_reference }} - SBS Application</h1>
+            <h1 class="mt-3 text-[26px] font-bold">{{ $application->record_reference }} - {{ $application->type_label }}</h1>
             <p class="mt-1 text-sm text-slate-500">Sponsorship record</p>
         </div>
         <div class="flex flex-wrap items-center gap-3">
@@ -34,7 +34,7 @@
                 <h2 id="summary-heading">Summary <span class="float-right text-xs font-normal text-slate-500"><span class="text-red-600">*</span> Required</span></h2>
                 <div class="px-6 py-4">
                     <dl class="border-b border-slate-100 pb-3">
-                        <div class="application-summary-row"><dt>SBS ID</dt><dd>{{ $application->record_reference }}</dd></div>
+                        <div class="application-summary-row"><dt>{{ $application->is_labour_agreement ? 'LAB' : 'SBS' }} ID</dt><dd>{{ $application->record_reference }}</dd></div>
                         <div class="application-summary-row"><dt>Sponsor type</dt><dd>{{ $application->sponsor_type ?: 'Standard Business Sponsor' }}</dd></div>
                         <div class="application-summary-row"><dt>Organisation name</dt><dd><a href="{{ route('organisations.show', $application->organisation_id) }}" class="text-[#1f7890] underline">{{ $application->organisation->name }}</a><p class="mt-1 text-slate-500">{{ $application->organisation->trading_name }}</p></dd></div>
                     </dl>
@@ -55,7 +55,7 @@
                 </div>
             </section>
             <section class="sbs-card" aria-labelledby="sponsorship-heading">
-                <h2 id="sponsorship-heading">Sponsorship</h2>
+                <h2 id="sponsorship-heading">{{ $application->is_labour_agreement ? 'Labour Agreement Details' : 'Sponsorship' }}</h2>
                 <div class="px-6 py-4">
                     <fieldset class="border-b border-slate-100 pb-4">
                         <legend class="sr-only">Sponsorship milestones</legend>
@@ -63,8 +63,10 @@
                             <x-applications.summary-select :name="$field" :label="['initial_consultation' => 'Initial consultation', 'service_agreement' => 'Service agreement', 'supporting_documents' => 'Supporting documents', 'application_stage' => 'Application'][$field]" :options="array_combine($options, $options)" :value="$application->$field ?? 'To do'" />
                         @endforeach
                         <x-applications.nomination-field :application="$application" name="lodgement_date" label="Lodgement date" type="date" />
-                        <x-applications.nomination-field :application="$application" name="trn" label="TRN" pattern="[A-Za-z0-9]{13}" aria-describedby="sbs-trn-help" />
-                        <p id="sbs-trn-help" class="text-xs text-slate-500">13 alphanumeric characters. Required when status is Active.</p>
+                        @unless($application->is_labour_agreement)
+                            <x-applications.nomination-field :application="$application" name="trn" label="TRN" pattern="[A-Za-z0-9]{13}" aria-describedby="sbs-trn-help" />
+                            <p id="sbs-trn-help" class="text-xs text-slate-500">13 alphanumeric characters. Required when status is Active.</p>
+                        @endunless
                     </fieldset>
                     <div class="py-3">
                         <x-applications.summary-select name="outcome" label="Outcome" :options="array_combine(\App\Support\PSC\NominationRecord::OUTCOMES, \App\Support\PSC\NominationRecord::OUTCOMES)" :value="$application->outcome" />

@@ -26,14 +26,12 @@ class SbsRecord
 
     public static function supports(Application $application): bool
     {
-        return $application->category === 'SBS' && $application->organisation_id
-            && strcasecmp(trim((string) $application->sponsor_type), 'Labour Agreement') !== 0;
+        return $application->category === 'SBS' && $application->organisation_id;
     }
 
     private function query(): Builder
     {
-        return Application::query()->where('category', 'SBS')->whereNotNull('organisation_id')
-            ->whereRaw("LOWER(TRIM(COALESCE(sponsor_type, ''))) != 'labour agreement'");
+        return Application::query()->where('category', 'SBS')->whereNotNull('organisation_id');
     }
 
     public function expireDue(?int $organisationId = null): int
@@ -52,9 +50,11 @@ class SbsRecord
             Organisation::query()->whereKey($visible->organisation_id)->lockForUpdate()->firstOrFail();
             $this->expireDue($visible->organisation_id);
             $application = $this->query()->assignedTo($user)->lockForUpdate()->findOrFail($id);
+            $labour = $application->is_labour_agreement;
             $summary = $withSummary ? app(ApplicationSummary::class)->validateUpdate($application,
                 array_diff_key($input, array_flip(self::DETAIL_FIELDS))) : [];
-            Validator::make($input, ['sponsor_type' => ['missing'], 'home_affairs_reference' => ['missing']])->validate();
+            Validator::make($input, ['sponsor_type' => ['missing'], 'home_affairs_reference' => ['missing']]
+                + ($labour ? ['trn' => ['missing']] : []))->validate();
 
             $details = [];
             foreach (self::DETAIL_FIELDS as $field) {
@@ -65,6 +65,9 @@ class SbsRecord
                 $details[$field] ??= 'To do';
             }
             $details = array_replace($details, array_intersect_key($input, $details));
+            if ($labour) {
+                $details['trn'] = null;
+            }
             $refused = $details['outcome'] === 'Refused';
             if (! $refused) {
                 foreach (['appeal_deadline', 'appeal_status', 'art_case_number', 'final_outcome', 'final_outcome_date'] as $field) {
@@ -88,7 +91,7 @@ class SbsRecord
             }
 
             $rules = [
-                'trn' => [$status === 'Active' ? 'required' : 'nullable', 'string', 'regex:/^[A-Za-z0-9]{13}$/'],
+                'trn' => [$status === 'Active' && ! $labour ? 'required' : 'nullable', 'string', 'regex:/^[A-Za-z0-9]{13}$/'],
                 'outcome' => ['nullable', Rule::in(NominationRecord::OUTCOMES)],
                 'appeal_status' => ['nullable', Rule::in(NominationRecord::APPEAL_STATUSES)],
                 'art_case_number' => ['nullable', 'string', 'max:255'],
@@ -126,8 +129,10 @@ class SbsRecord
                 $status = 'Expired';
             }
             if ($status === 'Active' && $this->query()->where('organisation_id', $application->organisation_id)
+                ->whereRaw("LOWER(TRIM(COALESCE(sponsor_type, ''))) ".($labour ? '=' : '!=')." 'labour agreement'")
                 ->whereKeyNot($id)->whereRaw("LOWER(TRIM(status)) = 'active'")->exists()) {
-                throw ValidationException::withMessages(['status' => 'This organisation already has an active SBS. Expire or change that record before activating another.']);
+                $type = $labour ? 'Labour Agreement' : 'SBS';
+                throw ValidationException::withMessages(['status' => "This organisation already has an active {$type}. Expire or change that record before activating another."]);
             }
             $application->fill(array_replace($summary, $validated, ['status' => $status]))->save();
 

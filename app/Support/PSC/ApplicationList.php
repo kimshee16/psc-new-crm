@@ -38,7 +38,8 @@ class ApplicationList
                 WHEN 'Study' THEN COALESCE(NULLIF(TRIM(applications.course), ''), 'Course TBD')
                 WHEN 'Visa' THEN COALESCE(applications.visa_subclass, '')
                 WHEN 'Citizenship' THEN 'Australian Citizenship Application'
-                WHEN 'SBS' THEN 'Standard Business Sponsorship'
+                WHEN 'SBS' THEN CASE WHEN LOWER(TRIM(applications.sponsor_type)) = 'labour agreement'
+                    THEN 'Labour Agreement' ELSE 'Standard Business Sponsorship' END
                 WHEN 'ART Appeal' THEN 'ART Appeal'
                 WHEN 'Nomination' THEN COALESCE(applications.nomination_pathway, '')
                 WHEN 'Assessment' THEN COALESCE(applications.assessment_body, '')

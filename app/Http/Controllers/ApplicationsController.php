@@ -101,7 +101,7 @@ class ApplicationsController extends Controller
             ? redirect()->route('applications.show', $record->id)
             : redirect()->route('applications');
 
-        return $route->with('success', $isNomination ? 'Nomination application saved.' : ($isSbs ? 'SBS application saved.' : 'Application summary saved.'));
+        return $route->with('success', $isNomination ? 'Nomination application saved.' : ($isSbs ? ($record->is_labour_agreement ? 'Labour Agreement application saved.' : 'SBS application saved.') : 'Application summary saved.'));
     }
 
     private function filters(Request $request): array

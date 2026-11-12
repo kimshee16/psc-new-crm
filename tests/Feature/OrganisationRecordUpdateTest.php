@@ -107,6 +107,7 @@ class OrganisationRecordUpdateTest extends TestCase
     {
         $user = User::factory()->create();
         $source = $this->source($user, null, ['sponsor_type' => 'Labour Agreement']);
+        ApplicationTypeSetting::create(['category' => 'SBS', 'tabs' => ['agreements', 'quotes']]);
         $this->actingAs($user);
         foreach (['agreements' => 'Employer agreement', 'quotes' => 'Service quote'] as $kind => $title) {
             $this->post(route('applications.activities.store', $source), ['kind' => $kind, 'title' => $title]

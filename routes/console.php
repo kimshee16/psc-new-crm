@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\PSC\SbsRecord;
 use App\Support\PSC\VisaGrants;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -15,8 +16,8 @@ Artisan::command('visas:apply-grants', function (VisaGrants $grants) {
 
 Schedule::command('visas:apply-grants')->everyMinute()->withoutOverlapping();
 
-Artisan::command('sbs:expire', function (\App\Support\PSC\SbsRecord $records) {
-    $this->info('Expired '.$records->expireDue().' SBS record(s).');
-})->purpose('Expire SBS records when their expiry date is reached');
+Artisan::command('sbs:expire', function (SbsRecord $records) {
+    $this->info('Expired '.$records->expireDue().' sponsorship record(s).');
+})->purpose('Expire SBS and Labour Agreement records when their expiry date is reached');
 
 Schedule::command('sbs:expire')->everyMinute()->withoutOverlapping();
