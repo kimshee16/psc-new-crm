@@ -135,7 +135,7 @@
         <div class="mt-4 flex justify-end"><button class="rounded-md bg-[#15638e] px-5 py-2 text-sm font-semibold text-white">Save changes</button></div>
     </form>
     <x-applications.linked-items :application="$application" :items="$linkedItems" />
-    <x-applications.tabs :application="$application" :tabs="$applicationTabs" :active-tab="$activeApplicationTab" :activities="$activities" />
+    <x-applications.tabs :application="$application" :tabs="$applicationTabs" :active-tab="$activeApplicationTab" :activities="$activities" :rfis="$rfis" />
     @if ($activeApplicationTab !== 'notes')
         <x-related-record-notes :record="$application" module="applications" :record-id="$application->id" />
     @endif

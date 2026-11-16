@@ -31,7 +31,7 @@
         @include('crm.organisations.application-details')
     @endif
     <x-applications.linked-items :application="$application" :items="$linkedItems" />
-    <x-applications.tabs :application="$application" :tabs="$applicationTabs" :active-tab="$activeApplicationTab" :activities="$activities" />
+    <x-applications.tabs :application="$application" :tabs="$applicationTabs" :active-tab="$activeApplicationTab" :activities="$activities" :rfis="$rfis" />
     @if ($activeApplicationTab !== 'notes')
         <x-related-record-notes :record="$application" module="applications" :record-id="$application->id" />
     @endif

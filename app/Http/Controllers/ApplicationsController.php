@@ -62,6 +62,7 @@ class ApplicationsController extends Controller
     {
         $record = Application::query()->assignedTo($request->user())
             ->with(['client', 'organisation', 'workflow', 'primaryCounsellor', 'secondaryCounsellor', 'migrationAgent', 'nomineeClient'])
+            ->withCount(['rfis as active_rfi_count' => fn ($query) => $query->where(fn ($active) => $active->where('status', '!=', 'Closed')->orWhereNull('status'))])
             ->findOrFail($application);
 
         $tabs = ApplicationTypeSetting::tabsFor($record->category, $record->sponsor_type);
@@ -78,10 +79,11 @@ class ApplicationsController extends Controller
             'application' => $record,
             'applicationTabs' => $tabs,
             'activeApplicationTab' => $activeTab,
+            'rfis' => $activeTab === 'rfi' ? $record->rfis()->with(['application', 'officer'])->latest('id')->paginate(10)->withQueryString() : null,
             'nominations' => $sbs && $activeTab === 'nominations' ? app(SbsRecord::class)->nominations($record, $request->user()) : null,
             'linkedItems' => $links->rows($record, $request->user())->get(),
             'activities' => $record->organisation_id && in_array($record->category, ['SBS', 'Nomination'], true)
-                && isset(ApplicationActivity::TABS[$activeTab ?? ''])
+                && $activeTab !== 'rfi' && isset(ApplicationActivity::TABS[$activeTab ?? ''])
                     ? $record->activities()->where('kind', $activeTab)->latest('id')->paginate(15)->withQueryString() : null,
         ] + $summary->viewData($record) + $nominationData);
     }

@@ -34,8 +34,8 @@ class OrganisationTasksController extends Controller
             'title' => [$creating ? 'required' : 'sometimes', 'required', 'string', 'max:255'],
             'due_date' => ['nullable', 'date_format:Y-m-d'],
             'assigned_to_user_id' => [$creating ? 'required' : 'sometimes', 'required', 'integer',
-                Rule::exists('users', 'id')->where('is_active', true)->where('portal_invite_status', '!=', 'Restrict Access')],
-            'status' => ['required', Rule::in(ApplicationActivity::TASK_STATUSES)],
+                Rule::exists('users', 'id')->where('is_active', true)->whereNot('portal_invite_status', 'Restrict Access')],
+            'status' => ['required', Rule::in([...ApplicationActivity::TASK_STATUSES, 'Pending', 'In progress'])],
         ]);
     }
 

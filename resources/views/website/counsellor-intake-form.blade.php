@@ -117,55 +117,55 @@
                 </header>
 
                 @if ($errors->any())
-                    <div class="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+                    <div role="alert" class="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
                         Please correct the highlighted fields and submit the form again.
                     </div>
                 @endif
 
-                <form method="POST" action="{{ $action }}" class="psc-intake-form space-y-5">
+                <form method="POST" action="{{ $action }}" class="psc-intake-form space-y-5" novalidate>
                     @csrf
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <label class="block">
                             <span class="text-sm font-bold text-slate-700">First Name <span class="text-red-600">*</span></span>
-                            <input name="first_name" value="{{ old('first_name') }}" required maxlength="80" pattern="[A-Za-z0-9 ]+" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
-                            @error('first_name') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
+                            <input name="first_name" @error('first_name') aria-invalid="true" aria-describedby="first_name-error" @enderror value="{{ old('first_name') }}" required maxlength="80" pattern="[A-Za-z0-9 ]+" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
+                            @error('first_name') <span id="first_name-error" class="psc-field-error mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                         </label>
 
                         <label class="block">
                             <span class="text-sm font-bold text-slate-700">Middle Name</span>
-                            <input name="middle_name" value="{{ old('middle_name') }}" maxlength="80" pattern="[A-Za-z0-9 ]+" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
-                            @error('middle_name') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
+                            <input name="middle_name" @error('middle_name') aria-invalid="true" aria-describedby="middle_name-error" @enderror value="{{ old('middle_name') }}" maxlength="80" pattern="[A-Za-z0-9 ]+" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
+                            @error('middle_name') <span id="middle_name-error" class="psc-field-error mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                         </label>
 
                         <label class="block">
-                            <span class="text-sm font-bold text-slate-700">Last Name <span class="text-red-600">*</span></span>
-                            <input name="surname" value="{{ old('surname') }}" required maxlength="80" pattern="[A-Za-z0-9 ]+" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
-                            @error('surname') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
+                            <span class="text-sm font-bold text-slate-700">Last Name</span>
+                            <input name="surname" @error('surname') aria-invalid="true" aria-describedby="surname-error" @enderror value="{{ old('surname') }}" maxlength="80" pattern="[A-Za-z0-9 ]+" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
+                            @error('surname') <span id="surname-error" class="psc-field-error mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                         </label>
                     </div>
 
                     <label class="block">
                         <span class="text-sm font-bold text-slate-700">Email <span class="text-red-600">*</span></span>
-                        <input type="email" name="email" value="{{ old('email') }}" required maxlength="120" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
-                        @error('email') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
+                        <input type="email" name="email" @error('email') aria-invalid="true" aria-describedby="email-error" @enderror value="{{ old('email') }}" required maxlength="120" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
+                        @error('email') <span id="email-error" class="psc-field-error mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                     </label>
 
                     <div>
                         <span class="block text-sm font-bold text-slate-700">Phone Number <span class="text-red-600">*</span></span>
                         <div class="psc-phone-fields mt-1">
                             <div>
-                                <select name="phone_country_code" required aria-label="Country code" class="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none transition">
+                                <select name="phone_country_code" @error('phone_country_code') aria-invalid="true" aria-describedby="phone_country_code-error" @enderror required aria-label="Country code" class="h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none transition">
                                     @foreach ($phoneCountryCodes as $code => $label)
                                         <option value="{{ $code }}" @selected(old('phone_country_code', '+61') === $code)>{{ $label }}</option>
                                     @endforeach
                                 </select>
-                                @error('phone_country_code') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
+                                @error('phone_country_code') <span id="phone_country_code-error" class="psc-field-error mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                             </div>
 
                             <div>
-                                <input name="phone_number" value="{{ old('phone_number') }}" required maxlength="40" pattern="[0-9 ()-]{6,24}" inputmode="tel" aria-label="Phone number" class="h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
-                                @error('phone_number') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
+                                <input name="phone_number" @error('phone_number') aria-invalid="true" aria-describedby="phone_number-error" @enderror value="{{ old('phone_number') }}" required maxlength="40" pattern="[0-9 ()-]{6,24}" inputmode="tel" aria-label="Phone number" class="h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
+                                @error('phone_number') <span id="phone_number-error" class="psc-field-error mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                             </div>
                         </div>
                     </div>
@@ -173,50 +173,50 @@
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <label class="block">
                             <span class="text-sm font-bold text-slate-700">Date of Birth <span class="text-red-600">*</span></span>
-                            <input type="date" name="dob" value="{{ old('dob') }}" required max="{{ now()->toDateString() }}" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
-                            @error('dob') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
+                            <input type="date" name="dob" @error('dob') aria-invalid="true" aria-describedby="dob-error" @enderror value="{{ old('dob') }}" required max="{{ now()->toDateString() }}" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
+                            @error('dob') <span id="dob-error" class="psc-field-error mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                         </label>
 
                         <label class="block">
                             <span class="text-sm font-bold text-slate-700">Highest education level</span>
-                            <select name="highest_education_level" class="mt-1 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none transition">
+                            <select name="highest_education_level" @error('highest_education_level') aria-invalid="true" aria-describedby="highest_education_level-error" @enderror class="mt-1 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none transition">
                                 <option value="">Select education level</option>
                                 @foreach ($educationLevels as $educationLevel)
                                     <option value="{{ $educationLevel }}" @selected(old('highest_education_level') === $educationLevel)>{{ $educationLevel }}</option>
                                 @endforeach
                             </select>
-                            @error('highest_education_level') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
+                            @error('highest_education_level') <span id="highest_education_level-error" class="psc-field-error mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                         </label>
                     </div>
 
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <label class="block">
                             <span class="text-sm font-bold text-slate-700">Nationality <span class="text-red-600">*</span></span>
-                            <input list="intake-countries-{{ $counsellor->id }}" name="nationality" value="{{ old('nationality') }}" required maxlength="80" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
+                            <input list="intake-countries-{{ $counsellor->id }}" name="nationality" @error('nationality') aria-invalid="true" aria-describedby="nationality-error" @enderror value="{{ old('nationality') }}" required maxlength="80" class="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition">
                             <datalist id="intake-countries-{{ $counsellor->id }}">
                                 @foreach ($countries as $country)
                                     <option value="{{ $country }}"></option>
                                 @endforeach
                             </datalist>
-                            @error('nationality') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
+                            @error('nationality') <span id="nationality-error" class="psc-field-error mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                         </label>
 
                         <label class="block">
                             <span class="text-sm font-bold text-slate-700">Current Location <span class="text-red-600">*</span></span>
-                            <select name="current_location" required class="mt-1 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none transition">
+                            <select name="current_location" @error('current_location') aria-invalid="true" aria-describedby="current_location-error" @enderror required class="mt-1 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm outline-none transition">
                                 <option value="">Select location</option>
                                 @foreach ($locations as $location)
                                     <option value="{{ $location }}" @selected(old('current_location') === $location)>{{ $location }}</option>
                                 @endforeach
                             </select>
-                            @error('current_location') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
+                            @error('current_location') <span id="current_location-error" class="psc-field-error mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                         </label>
                     </div>
 
                     <label class="block">
                         <span class="text-sm font-bold text-slate-700">Enquiry</span>
-                        <textarea name="enquiry" rows="5" maxlength="4000" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none transition">{{ old('enquiry') }}</textarea>
-                        @error('enquiry') <span class="mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
+                        <textarea name="enquiry" @error('enquiry') aria-invalid="true" aria-describedby="enquiry-error" @enderror rows="5" maxlength="4000" class="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none transition">{{ old('enquiry') }}</textarea>
+                        @error('enquiry') <span id="enquiry-error" class="psc-field-error mt-1 block text-xs font-semibold text-red-700">{{ $message }}</span> @enderror
                     </label>
 
                     <div class="flex justify-end">
@@ -225,5 +225,6 @@
                 </form>
             </section>
         </main>
+        @include('website.partials.form-validation')
     </body>
 </html>

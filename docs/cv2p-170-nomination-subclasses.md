@@ -26,3 +26,10 @@ Validation: `NominationCreationTest` and `NominationSubclassConfigurationTest`
 cover creation, the exact default catalogue, rendered dropdown options and blank
 selection, workflow-name lookup, add/edit/remove behaviour, retained historical
 values, access control, invalid input, and sponsorship-independent creation.
+
+Revalidated against CV2P-170 on 11 November 2026. Added regression coverage
+confirming that workflow visa-name changes affect new choices while existing
+nominations retain and can save their historical pathway, and that toggling
+SBS required changes new nomination defaults without rewriting saved links.
+The configuration, creation and nomination-record suites passed: 28 tests,
+617 assertions. The local catalogue migration is already applied.

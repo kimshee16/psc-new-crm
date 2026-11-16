@@ -129,7 +129,7 @@ class LeadsController extends Controller
             'assigned_name' => (string) $validated['assigned_name'],
             'assigned_office_code' => $officeCode,
             'assigned_office' => $offices[$officeCode] ?? $lead->assigned_office,
-            'prospective_service' => (string) $validated['prospective_service'],
+            'prospective_service' => (string) ($validated['prospective_service'] ?? ''),
             'status' => (string) $validated['status'],
             'priority' => (string) $validated['priority'],
             'critical_date' => $validated['critical_date'] ?? null,
@@ -211,11 +211,11 @@ class LeadsController extends Controller
             'phone_display' => $phoneDisplay,
             'phone_href' => preg_replace('/[^0-9+]/', '', $phoneDisplay) ?? '',
             'email' => $client?->email ?? $lead->email,
-            'prospective_service' => $lead->prospective_service ?: 'Study',
+            'prospective_service' => $lead->prospective_service ?? '',
             'status' => $this->displayStatus((string) $lead->status),
             'priority' => $this->displayPriority((string) ($lead->priority ?? 'medium')),
             'critical_date' => $lead->critical_date?->format('Y-m-d') ?? '',
-            'source' => $lead->source,
+            'source' => $lead->source === 'PSC-7 counsellor intake' ? 'Counsellor intake' : $lead->source,
             'psc_event_id' => $lead->psc_event_id,
             'event_name' => $lead->event_name ?? '',
             'event_discovery_channel' => $lead->event_discovery_channel ?? '',
@@ -371,7 +371,7 @@ class LeadsController extends Controller
     private function leadRecordRules(Lead $lead): array
     {
         return [
-            'prospective_service' => ['required', 'string', 'max:80', Rule::in($this->prospectiveServices())],
+            'prospective_service' => ['nullable', 'string', 'max:80', Rule::in($this->prospectiveServices())],
             'status' => ['required', 'string', 'max:40', Rule::in($this->statuses())],
             'priority' => ['required', 'string', 'max:20', Rule::in($this->priorities())],
             'critical_date' => ['nullable', 'date'],
@@ -596,7 +596,7 @@ class LeadsController extends Controller
      */
     private function sources(): array
     {
-        return ['Contact us', 'Book a free consultation', 'PSC-7 counsellor intake', 'Event', 'Manual'];
+        return ['Contact us', 'Book a free consultation', 'Counsellor intake', 'Event', 'Manual'];
     }
 
     private function displayStatus(string $status): string

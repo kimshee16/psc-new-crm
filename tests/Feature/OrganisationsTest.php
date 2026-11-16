@@ -134,6 +134,7 @@ class OrganisationsTest extends TestCase
 
     public function test_all_four_tabs_collate_only_assigned_sbs_and_nomination_records_for_this_organisation(): void
     {
+        \Illuminate\Support\Facades\Storage::fake('local');
         $user = User::factory()->create();
         $other = User::factory()->create();
         $organisation = $this->organisation($user);
@@ -145,10 +146,18 @@ class OrganisationsTest extends TestCase
         $this->actingAs($user);
         foreach (array_intersect_key(ApplicationActivity::TABS, ApplicationTypeSetting::tabsFor('Nomination'), ApplicationTypeSetting::tabsFor('SBS')) as $kind => $label) {
             foreach ([$sbs, $nomination] as $application) {
-                $this->post(route('applications.activities.store', $application), [
+                if ($kind === 'rfi') {
+                    $this->post(route('applications.rfis.store', $application), [
+                        'request_type' => 'Other', 'request_type_other' => $label.' for '.$application->category,
+                        'received_date' => '2026-11-16', 'due_date' => '2026-12-01',
+                        'request_letter' => \Illuminate\Http\UploadedFile::fake()->create('letter.pdf', 10, 'application/pdf'),
+                    ])->assertSessionHasNoErrors();
+                } else {
+                    $this->post(route('applications.activities.store', $application), [
                     'kind' => $kind, 'title' => $label.' for '.$application->category, 'status' => 'Open',
                     'reference' => 'REF-123', 'due_date' => '2026-12-01',
-                ] + (in_array($kind, ['payments', 'quotes']) ? ['amount' => '1250.75', 'currency' => 'AUD'] : []))->assertSessionHasNoErrors();
+                    ] + (in_array($kind, ['payments', 'quotes']) ? ['amount' => '1250.75', 'currency' => 'AUD'] : []))->assertSessionHasNoErrors();
+                }
                 $this->get(route('applications.show', ['application' => $application, 'tab' => $kind]))->assertOk()->assertSee($label.' for '.$application->category);
             }
             foreach ([$hidden, $study, $unrelated] as $application) {

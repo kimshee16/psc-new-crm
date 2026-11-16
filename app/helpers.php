@@ -27,6 +27,7 @@ if (! function_exists('payroll_icon')) {
             'sliders' => '<path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h8M16 18h4"/><path d="M14 4v4M8 10v4M14 16v4"/>',
             'arrows' => '<path d="m7 7-4 4 4 4"/><path d="M3 11h15"/><path d="m17 17 4-4-4-4"/><path d="M21 13H6"/>',
             'file' => '<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/>',
+            'note' => '<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',
             'calculator' => '<path d="M6 3h12v18H6z"/><path d="M8 7h8M8 11h2M12 11h2M16 11h.01M8 15h2M12 15h2M16 15h.01"/>',
             'chart' => '<path d="M4 19V5"/><path d="M4 19h16"/><path d="m7 15 3-4 3 2 5-7"/>',
             'dollar' => '<path d="M12 2v20M17 6.5C15.8 5.4 14.2 5 12.7 5 10.2 5 8.5 6.2 8.5 8s1.5 2.8 4 3.4c2.6.7 4 1.6 4 3.6 0 1.9-1.7 3.2-4.2 3.2-1.8 0-3.6-.6-4.8-1.8"/>',

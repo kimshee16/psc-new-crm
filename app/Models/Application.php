@@ -78,6 +78,11 @@ class Application extends Model
         return $this->hasMany(ApplicationActivity::class);
     }
 
+    public function rfis(): HasMany
+    {
+        return $this->hasMany(ApplicationRfi::class);
+    }
+
     protected static function booted(): void
     {
         static::creating(function (Application $application): void {

@@ -20,6 +20,8 @@ use App\Http\Controllers\OrganisationApplicationsController;
 use App\Http\Controllers\OrganisationsController;
 use App\Http\Controllers\OrganisationTasksController;
 use App\Http\Controllers\RecordNotesController;
+use App\Http\Controllers\RfisController;
+use App\Http\Controllers\TasksController;
 use App\Http\Controllers\UserConfigurationController;
 use App\Http\Controllers\UserInvitationController;
 use App\Http\Controllers\WebsiteLeadFormController;
@@ -78,8 +80,6 @@ $registerRoutes = function () {
         })->name('home');
 
         foreach ([
-            'tasks' => 'Tasks',
-            'rfis' => 'RFI',
             'reports' => 'Reports',
         ] as $route => $heading) {
             Route::get('/'.$route, fn () => view('crm.section', [
@@ -88,6 +88,20 @@ $registerRoutes = function () {
                 'heading' => $heading,
             ]))->name($route);
         }
+
+        Route::get('/tasks', [TasksController::class, 'index'])->name('tasks');
+        Route::post('/tasks', [TasksController::class, 'store'])->name('tasks.store');
+        Route::get('/tasks/export', [TasksController::class, 'export'])->name('tasks.export');
+
+        Route::get('/rfis', [RfisController::class, 'index'])->name('rfis');
+        Route::get('/rfis/export', [RfisController::class, 'export'])->name('rfis.export');
+        Route::get('/rfis/{rfi}/edit', [RfisController::class, 'edit'])->whereNumber('rfi')->name('rfis.edit');
+        Route::patch('/rfis/{rfi}', [RfisController::class, 'update'])->whereNumber('rfi')->name('rfis.update');
+        Route::patch('/rfis/{rfi}/notes', [RfisController::class, 'notes'])->whereNumber('rfi')->name('rfis.notes');
+        Route::delete('/rfis/{rfi}', [RfisController::class, 'destroy'])->whereNumber('rfi')->name('rfis.destroy');
+        Route::get('/rfis/{rfi}/documents/{document}', [RfisController::class, 'document'])->whereNumber('rfi')->name('rfis.document');
+        Route::get('/applications/{application}/rfis/create', [RfisController::class, 'create'])->whereNumber('application')->name('applications.rfis.create');
+        Route::post('/applications/{application}/rfis', [RfisController::class, 'store'])->whereNumber('application')->name('applications.rfis.store');
 
         Route::get('/applications', [ApplicationsController::class, 'index'])->name('applications');
         Route::get('/applications/export', [ApplicationsController::class, 'export'])->name('applications.export');

@@ -50,8 +50,11 @@ class EventReferralTest extends TestCase
         $this->post('/configuration/event-marketing', ['name' => 'Social media', 'sort_order' => 1, 'active' => true])
             ->assertSessionHasNoErrors();
         $event = $this->event();
-        $this->get($event->registrationUrl())->assertOk()->assertSeeInOrder(['Social media', 'Friend'])
-            ->assertSee('How did you hear about our event?')->assertSee('name="event_referral_id" required', false);
+        $response = $this->get($event->registrationUrl())->assertOk()->assertSeeInOrder(['Social media', 'Friend'])
+            ->assertSee('How did you hear about our event?');
+        $document = new \DOMDocument;
+        @$document->loadHTML($response->getContent());
+        $this->assertTrue((new \DOMXPath($document))->query('//select[@name="event_referral_id"]')->item(0)->hasAttribute('required'));
         $this->patch('/configuration/event-marketing/'.$friend->id, ['name' => 'Friend or family', 'sort_order' => 3, 'active' => false])
             ->assertSessionHasNoErrors();
         $this->get($event->registrationUrl())->assertDontSee('Friend or family');

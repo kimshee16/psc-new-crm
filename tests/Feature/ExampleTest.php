@@ -1316,7 +1316,7 @@ class ExampleTest extends TestCase
             'assigned_office_code' => 'SYD',
             'assigned_office' => 'Sydney',
             'form_type' => 'counsellor_intake',
-            'source' => 'PSC-7 counsellor intake',
+            'source' => 'Counsellor intake',
             'email' => 'kim.intake@example.test',
             'dob' => '1999-05-20',
             'highest_education_level' => 'Bachelor Degree',

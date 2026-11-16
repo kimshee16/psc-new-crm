@@ -270,6 +270,7 @@
                     <div class="lead-field">
                         <label for="lead-prospective-service" class="lead-label">Prospective Service</label>
                         <select id="lead-prospective-service" name="prospective_service" class="lead-control @error('prospective_service') is-invalid @enderror">
+                            <option value="" @selected(old('prospective_service', $lead['prospective_service']) === '')>Select prospective service</option>
                             @foreach ($prospectiveServices as $service)
                                 <option value="{{ $service }}" @selected(old('prospective_service', $lead['prospective_service']) === $service)>{{ $service }}</option>
                             @endforeach

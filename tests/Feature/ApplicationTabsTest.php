@@ -43,7 +43,9 @@ class ApplicationTabsTest extends TestCase
             $response = $this->get(route('applications.show', ['application' => $application, 'tab' => $key]))
                 ->assertOk()->assertViewHas('activeApplicationTab', $key)
                 ->assertSee('aria-current="page"', false);
-            if (isset(ApplicationActivity::TABS[$key])) {
+            if ($key === 'rfi') {
+                $response->assertSee('No RFI records yet.')->assertSee('Add RFI');
+            } elseif (isset(ApplicationActivity::TABS[$key])) {
                 $response->assertSee('No '.strtolower($label).' records yet.')->assertSee('Save record');
             } elseif ($key === 'nominations') {
                 $response->assertSee('No nominations reference this SBS.');

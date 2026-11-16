@@ -13,8 +13,8 @@
                             @csrf @method('PATCH')
                             <input type="hidden" name="_task_status" value="{{ $task->id }}">
                             <select name="status" aria-label="Status for {{ $task->title }}" onchange="this.form.requestSubmit()" class="min-w-32 rounded-md border border-slate-600 bg-white px-3 py-2.5">
-                                @if(!in_array($task->status, \App\Models\ApplicationActivity::TASK_STATUSES))<option value="{{ $task->status }}" selected disabled>{{ $task->status ?: 'Choose status' }}</option>@endif
-                                @foreach(\App\Models\ApplicationActivity::TASK_STATUSES as $status)<option @selected($task->status === $status)>{{ $status }}</option>@endforeach
+                                @if(!in_array($task->task_status, \App\Models\ApplicationActivity::TASK_STATUSES))<option value="{{ $task->status }}" selected disabled>{{ $task->status ?: 'Choose status' }}</option>@endif
+                                @foreach(\App\Models\ApplicationActivity::TASK_STATUSES as $status)<option @selected($task->task_status === $status)>{{ $status }}</option>@endforeach
                             </select>
                             <noscript><button class="mt-2 text-[#15638e] underline">Save status</button></noscript>
                         </form>

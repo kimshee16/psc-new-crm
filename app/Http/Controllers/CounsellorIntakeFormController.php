@@ -55,9 +55,10 @@ class CounsellorIntakeFormController extends Controller
                 'assigned_name' => $assignment['name'],
                 'assigned_office_code' => $assignment['office_code'],
                 'assigned_office' => $assignment['office'],
-                'assignment_reason' => 'PSC-7 intake form submitted from '.$assignment['name'].' direct QR/link.',
+                'assignment_reason' => 'Counsellor intake form submitted from '.$assignment['name'].' direct QR/link.',
                 'form_type' => 'counsellor_intake',
-                'source' => 'PSC-7 counsellor intake',
+                'source' => 'Counsellor intake',
+                'prospective_service' => '',
                 'status' => 'New',
                 'first_name' => (string) $validated['first_name'],
                 'middle_name' => (string) ($validated['middle_name'] ?? ''),
@@ -109,7 +110,7 @@ class CounsellorIntakeFormController extends Controller
         $validator = Validator::make($request->all(), [
             'first_name' => ['required', 'string', 'max:80', 'regex:/^[A-Za-z0-9 ]+$/'],
             'middle_name' => ['nullable', 'string', 'max:80', 'regex:/^[A-Za-z0-9 ]+$/'],
-            'surname' => ['required', 'string', 'max:80', 'regex:/^[A-Za-z0-9 ]+$/'],
+            'surname' => ['nullable', 'string', 'max:80', 'regex:/^[A-Za-z0-9 ]+$/'],
             'email' => ['required', 'email', 'max:120'],
             'phone_country_code' => ['required', 'string', Rule::in(array_keys(WebsiteLeadReferences::phoneCountryCodes()))],
             'phone_number' => ['required', 'string', 'max:40', 'regex:/^[0-9 ()-]{6,24}$/'],
@@ -162,7 +163,7 @@ class CounsellorIntakeFormController extends Controller
         $attributes = [
             'first_name' => (string) $validated['first_name'],
             'middle_name' => (string) ($validated['middle_name'] ?? ''),
-            'surname' => (string) ($validated['surname'] ?? ''),
+            'surname' => (string) ($validated['surname'] ?? $client?->surname ?? ''),
             'dob' => $validated['dob'],
             'phone_country_code' => $phoneCountryCode,
             'phone_number' => $phoneNumber,
@@ -210,12 +211,21 @@ class CounsellorIntakeFormController extends Controller
      */
     private function clientMatchingSubmission(array $validated): ?Client
     {
-        return Client::query()
+        $surname = trim((string) ($validated['surname'] ?? ''));
+        $query = Client::query()
             ->whereRaw('LOWER(TRIM(first_name)) = ?', [strtolower(trim((string) $validated['first_name']))])
-            ->whereRaw("LOWER(TRIM(COALESCE(surname, ''))) = ?", [strtolower(trim((string) $validated['surname']))])
-            ->whereDate('dob', (string) $validated['dob'])
-            ->orderBy('id')
-            ->first();
+            ->whereDate('dob', (string) $validated['dob']);
+
+        if ($surname !== '') {
+            return $query->whereRaw("LOWER(TRIM(COALESCE(surname, ''))) = ?", [strtolower($surname)])
+                ->orderBy('id')->first();
+        }
+
+        // Without a surname, only link an unambiguous name/date-of-birth/email match.
+        $matches = $query->whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim((string) $validated['email']))])
+            ->limit(2)->get();
+
+        return $matches->count() === 1 ? $matches->first() : null;
     }
 
     private function nextClientId(): int

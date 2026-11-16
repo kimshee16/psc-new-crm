@@ -27,7 +27,7 @@
     </label>
     <label for="task-{{ $taskFormId }}-status">Status *
         <select id="task-{{ $taskFormId }}-status" name="status" required class="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2">
-            @foreach(\App\Models\ApplicationActivity::TASK_STATUSES as $status)<option @selected(($taskDraft ? old('status') : ($task?->status ?? 'Pending')) === $status)>{{ $status }}</option>@endforeach
+            @foreach(\App\Models\ApplicationActivity::TASK_STATUSES as $status)<option @selected(($taskDraft ? old('status') : ($task?->task_status ?? 'To Do')) === $status)>{{ $status }}</option>@endforeach
         </select>
     </label>
     <div class="sm:col-span-2"><button type="submit" class="rounded-md bg-[#15638e] px-4 py-2 font-semibold text-white">{{ $task ? 'Save task' : 'Add task' }}</button></div>

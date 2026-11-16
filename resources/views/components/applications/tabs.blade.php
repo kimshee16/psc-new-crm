@@ -1,4 +1,4 @@
-@props(['application', 'tabs', 'activeTab', 'activities' => null, 'nominations' => null])
+@props(['application', 'tabs', 'activeTab', 'activities' => null, 'nominations' => null, 'rfis' => null])
 
 <section id="application-tabs" class="mt-6 min-w-0 rounded-lg border border-slate-200 bg-white shadow-sm" aria-label="Application details">
     @if ($tabs)
@@ -7,7 +7,7 @@
                 <a id="application-tab-{{ $key }}"
                    href="{{ route('applications.show', ['application' => $application->id, 'tab' => $key]) }}#application-tabs"
                    @if ($activeTab === $key) aria-current="page" @endif
-                   class="border-b-2 px-4 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[#1f7890] {{ $activeTab === $key ? 'border-[#1f7890] bg-[#eaf7fc] text-[#123348]' : 'border-transparent text-slate-600 hover:bg-slate-50' }}">{{ $label }}</a>
+                   class="border-b-2 px-4 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[#1f7890] {{ $activeTab === $key ? 'border-[#1f7890] bg-[#eaf7fc] text-[#123348]' : 'border-transparent text-slate-600 hover:bg-slate-50' }}">{{ $label }}@if($key === 'rfi') <span class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs" aria-label="{{ $application->active_rfi_count ?? 0 }} active RFIs">{{ $application->active_rfi_count ?? 0 }}</span>@endif</a>
             @endforeach
         </nav>
         <section class="p-6" aria-labelledby="application-tab-{{ $activeTab }}">
@@ -16,6 +16,12 @@
                 <x-related-record-notes :record="$application" module="applications" :record-id="$application->id" />
             @elseif ($activeTab === 'nominations' && $nominations !== null)
                 @include('crm.applications.sbs-nominations')
+            @elseif ($activeTab === 'rfi' && $rfis !== null)
+                <div class="mt-4 flex justify-end"><a href="{{ route('applications.rfis.create', $application) }}" class="rounded-md bg-[#1f7890] px-4 py-2 text-sm font-semibold text-white">+ Add RFI</a></div>
+                @include('crm.rfis.styles')
+                <x-rfis.table :rfis="$rfis" return-to="application" />
+                <div class="mt-4">{{ $rfis->links() }}</div>
+                <x-rfis.notes-dialogs :rfis="$rfis" return-to="application" />
             @elseif ($activities !== null)
                 <x-applications.activity-records :activities="$activities" :kind="$activeTab" />
                 @include('crm.organisations.activity-form', ['application' => $application, 'kind' => $activeTab])

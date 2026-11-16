@@ -8,6 +8,7 @@ use App\Models\Organisation;
 use App\Models\User;
 use App\Support\PSC\ApplicationSummary;
 use App\Support\PSC\NominationCreation;
+use App\Support\PSC\NominationRecord;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -94,6 +95,68 @@ class NominationSubclassConfigurationTest extends TestCase
             ->assertRedirect($url)->assertSessionHasErrors('sbs_required')->assertSessionHasInput('subclass', '407');
         $this->get($url)->assertOk()->assertSee('value="407" selected', false);
         $this->assertSame('482', $option->fresh()->subclass);
+    }
+
+    public function test_workflow_name_changes_update_new_choices_without_rewriting_existing_nominations(): void
+    {
+        $user = User::factory()->create();
+        $organisation = Organisation::create(['name' => 'Sponsor', 'created_by_user_id' => $user->id]);
+        $original = '482 - Original workflow visa';
+        $renamed = '482 - Renamed workflow visa';
+        $workflow = ApplicationWorkflow::create(['name' => 'Employer visas', 'category' => 'Visa',
+            'summary_options' => ['visa_subclass' => [$original]]]);
+        $payload = ['category' => 'Nomination', 'external_nominee' => '1', 'nominee_name' => 'Nominee'];
+        $this->actingAs($user)->post(route('organisations.applications.store', $organisation),
+            $payload + ['visa_subclass' => $original])->assertSessionHasNoErrors();
+        $existing = $organisation->applications()->sole();
+
+        $workflow->update(['summary_options' => ['visa_subclass' => [$renamed]]]);
+        $this->get(route('configuration', ['tab' => 'nomination-subclasses']))->assertOk()
+            ->assertSee('Renamed workflow visa')->assertDontSee('Original workflow visa');
+        $this->get(route('organisations.show', $organisation))->assertOk()
+            ->assertViewHas('nominationSubclasses', fn ($options) => in_array($renamed, $options, true)
+                && ! in_array($original, $options, true));
+        $this->postJson(route('organisations.applications.store', $organisation),
+            $payload + ['visa_subclass' => $original])->assertUnprocessable()->assertJsonValidationErrors('visa_subclass');
+        $this->post(route('organisations.applications.store', $organisation),
+            $payload + ['visa_subclass' => $renamed])->assertSessionHasNoErrors();
+        $this->patch(route('applications.update', $existing), [
+            'status' => 'In Progress', 'priority' => 'M', 'primary_counsellor_id' => $user->id,
+            'external_nominee' => '1', 'nominee_name' => 'Existing nominee', 'nomination_pathway' => $original,
+        ])->assertSessionHasNoErrors();
+        $this->assertSame($original, $existing->fresh()->nomination_pathway);
+        $this->assertDatabaseHas('applications', ['organisation_id' => $organisation->id, 'nomination_pathway' => $renamed]);
+    }
+
+    public function test_editing_sbs_required_changes_nomination_defaults_without_rewriting_saved_sponsorships(): void
+    {
+        $user = User::factory()->create();
+        $organisation = Organisation::create(['name' => 'Sponsor', 'created_by_user_id' => $user->id]);
+        $sbs = $organisation->applications()->create(['category' => 'SBS', 'sponsor_type' => 'Standard Business Sponsor',
+            'status' => 'Active', 'primary_counsellor_id' => $user->id]);
+        $option = NominationSubclass::where('subclass', '482')->firstOrFail();
+        $payload = ['category' => 'Nomination', 'external_nominee' => '1', 'nominee_name' => 'Nominee',
+            'visa_subclass' => NominationSubclass::visaOptions()['482']];
+        $this->actingAs($user)->post(route('organisations.applications.store', $organisation), $payload)
+            ->assertSessionHasNoErrors();
+        $existing = $organisation->applications()->where('category', 'Nomination')->sole();
+        $this->assertSame($sbs->id, $existing->sponsorship_id);
+
+        $this->patch(route('configuration.nomination-subclasses.update', $option), ['subclass' => '482', 'sbs_required' => false])
+            ->assertSessionHasNoErrors();
+        $this->assertFalse(app(NominationRecord::class)->requiresSbs($payload['visa_subclass']));
+        $this->get(route('applications.show', $existing))->assertOk()
+            ->assertViewHas('sbsRequiredSubclasses', fn ($options) => ! in_array('482', $options, true));
+        $this->post(route('organisations.applications.store', $organisation), $payload)->assertSessionHasNoErrors();
+        $new = $organisation->applications()->where('category', 'Nomination')->latest('id')->firstOrFail();
+        $this->assertNull($new->sponsorship_id);
+        $this->assertSame($sbs->id, $existing->fresh()->sponsorship_id);
+
+        $this->patch(route('configuration.nomination-subclasses.update', $option), ['subclass' => '482', 'sbs_required' => true])
+            ->assertSessionHasNoErrors();
+        $this->post(route('organisations.applications.store', $organisation), $payload)->assertSessionHasNoErrors();
+        $this->assertSame($sbs->id, $organisation->applications()->where('category', 'Nomination')->latest('id')->firstOrFail()->sponsorship_id);
+        $this->assertNull($new->fresh()->sponsorship_id);
     }
 
     public function test_catalogue_mutations_require_configuration_access(): void

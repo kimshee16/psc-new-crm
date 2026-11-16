@@ -12,12 +12,20 @@ class ApplicationActivity extends Model
 
     public const ORGANISATION_TABS = ['notes' => 'Notes', 'tasks' => 'Tasks', 'rfi' => 'RFI', 'payments' => 'Payments', 'agreements' => 'Agreements', 'quotes' => 'Quotes'];
 
-    public const TASK_STATUSES = ['Pending', 'In progress', 'Done'];
+    public const TASK_STATUSES = ['To Do', 'In Progress', 'Pending External', 'Done'];
 
-    protected $fillable = ['kind', 'title', 'status', 'reference', 'due_date', 'amount', 'currency', 'assigned_to_user_id'];
+    protected $fillable = ['kind', 'title', 'status', 'reference', 'due_date', 'amount', 'currency', 'assigned_to_user_id', 'application_id', 'lead_id'];
 
     protected static function booted(): void
     {
+        static::creating(function (ApplicationActivity $activity): void {
+            $activity->created_by_user_id = auth()->id();
+            if ($activity->kind === 'tasks') {
+                $activity->assigned_to_user_id ??= auth()->id();
+                $activity->status ??= 'To Do';
+            }
+        });
+
         static::saved(function (ApplicationActivity $activity): void {
             if ($activity->kind !== 'agreements' || ! $activity->wasChanged(['status', 'kind']) && ! $activity->wasRecentlyCreated) {
                 return;
@@ -39,6 +47,32 @@ class ApplicationActivity extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to_user_id');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function lead(): BelongsTo
+    {
+        return $this->belongsTo(Lead::class);
+    }
+
+    public function getTaskStatusAttribute(): string
+    {
+        return match (strtolower(trim((string) $this->status))) {
+            'pending', 'to do', '' => 'To Do',
+            'in progress' => 'In Progress',
+            'pending external' => 'Pending External',
+            'done' => 'Done',
+            default => $this->status,
+        };
+    }
+
+    public function getRelatedReferenceAttribute(): string
+    {
+        return $this->application?->record_reference ?? $this->lead?->lead_id ?? '';
     }
 
     protected function casts(): array

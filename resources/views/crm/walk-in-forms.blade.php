@@ -53,13 +53,33 @@
                 const row = button.closest('[data-walk-in-form]');
                 const input = row.querySelector('[data-form-link]');
                 const status = row.querySelector('[data-copy-status]');
-                try {
-                    await navigator.clipboard.writeText(input.value);
-                    status.textContent = 'Link copied.';
-                } catch {
+                const copySelectedLink = () => {
                     input.focus();
                     input.select();
-                    status.textContent = 'Press Ctrl+C (or Command+C) to copy the selected link.';
+                    input.setSelectionRange(0, input.value.length);
+                    try {
+                        return document.execCommand('copy');
+                    } catch {
+                        return false;
+                    }
+                };
+                let copied = false;
+                if (window.isSecureContext && navigator.clipboard?.writeText) {
+                    try {
+                        await navigator.clipboard.writeText(input.value);
+                        copied = true;
+                    } catch {
+                        copied = copySelectedLink();
+                    }
+                } else {
+                    copied = copySelectedLink();
+                }
+                if (copied) {
+                    status.textContent = 'Link copied.';
+                    button.focus();
+                } else {
+                    button.hidden = true;
+                    status.textContent = 'Copy the selected form link using Ctrl+C (or Command+C).';
                 }
             });
         });
