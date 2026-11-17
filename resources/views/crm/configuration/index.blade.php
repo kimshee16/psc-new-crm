@@ -5,6 +5,12 @@
         $activeConfigurationTab = $activeConfigurationTab ?? 'locations';
         $configurationTabs = [
             [
+                'id' => 'migration-agents',
+                'label' => 'Migration Agents',
+                'description' => 'Agent registration, contact details and signatures.',
+                'count' => $migrationAgents->count(),
+            ],
+            [
                 'id' => 'nomination-subclasses',
                 'label' => 'Nomination Subclasses',
                 'description' => 'Visa subclasses available for nominations.',
@@ -216,6 +222,8 @@
                 @include('crm.configuration.application-types')
             @elseif ($activeConfigurationTab === 'nomination-subclasses')
                 @include('crm.configuration.nomination-subclasses')
+            @elseif ($activeConfigurationTab === 'migration-agents')
+                @include('crm.configuration.migration-agents')
             @elseif ($activeConfigurationTab === 'event-marketing')
                 @include('crm.configuration.event-marketing')
             @elseif ($activeConfigurationTab === 'events')

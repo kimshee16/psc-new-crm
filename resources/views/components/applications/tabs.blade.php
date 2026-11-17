@@ -1,13 +1,13 @@
 @props(['application', 'tabs', 'activeTab', 'activities' => null, 'nominations' => null, 'rfis' => null])
 
-<section id="application-tabs" class="mt-6 min-w-0 rounded-lg border border-slate-200 bg-white shadow-sm" aria-label="Application details">
+<section id="application-tabs" class="mt-6 min-w-0 scroll-mt-20 rounded-lg border border-slate-200 bg-white shadow-sm" aria-label="Application details">
     @if ($tabs)
         <nav aria-label="Application tabs" class="flex flex-wrap gap-1 border-b border-slate-200 px-4 pt-3">
             @foreach ($tabs as $key => $label)
                 <a id="application-tab-{{ $key }}"
                    href="{{ route('applications.show', ['application' => $application->id, 'tab' => $key]) }}#application-tabs"
                    @if ($activeTab === $key) aria-current="page" @endif
-                   class="border-b-2 px-4 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[#1f7890] {{ $activeTab === $key ? 'border-[#1f7890] bg-[#eaf7fc] text-[#123348]' : 'border-transparent text-slate-600 hover:bg-slate-50' }}">{{ $label }}@if($key === 'rfi') <span class="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs" aria-label="{{ $application->active_rfi_count ?? 0 }} active RFIs">{{ $application->active_rfi_count ?? 0 }}</span>@endif</a>
+                   class="border-b-2 px-4 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[#1f7890] {{ $activeTab === $key ? 'border-[#1f7890] bg-[#eaf7fc] text-[#123348]' : 'border-transparent text-slate-600 hover:bg-slate-50' }}">{{ $label }}@if($key === 'rfi') <span data-outstanding-rfi-count="{{ $application->active_rfi_count ?? 0 }}" class="ml-1 inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-xs {{ ($application->active_rfi_count ?? 0) > 0 ? 'bg-[#1f7890] text-white' : 'bg-slate-100 text-slate-600' }}" title="RFIs that are not Closed" aria-label="{{ $application->active_rfi_count ?? 0 }} outstanding {{ ($application->active_rfi_count ?? 0) === 1 ? 'RFI' : 'RFIs' }}">{{ $application->active_rfi_count ?? 0 }}</span>@endif</a>
             @endforeach
         </nav>
         <section class="p-6" aria-labelledby="application-tab-{{ $activeTab }}">

@@ -4,8 +4,15 @@
     @php($taskDraft = fn($key, $default = '') => is_scalar(old($key, $default)) ? old($key, $default) : $default)
     <style>
         .tasks-table { width: 100%; min-width: 1050px; table-layout: fixed; }
-        .tasks-table th, .tasks-table td { padding: 16px; vertical-align: top; overflow-wrap: anywhere; }
-        .tasks-table th:first-child { width: 28%; }
+        .tasks-table th, .tasks-table td { padding: 12px 14px; vertical-align: top; overflow-wrap: anywhere; }
+        .tasks-table .task-description-column { width: 28%; }
+        .tasks-table .task-related-column { width: 26%; }
+        .tasks-table .task-date-column, .tasks-table .task-status-column { width: 12%; }
+        .tasks-table .task-person-column { width: 11%; }
+        .task-related-link { display: block; border-radius: 3px; color: #1f7890; }
+        .task-related-link:hover .task-related-context { text-decoration: underline; }
+        .task-related-context { display: block; font-weight: 600; }
+        .task-related-reference { display: block; margin-top: 3px; font-size: 12px; color: #64748b; }
         .tasks-table tbody tr { border-top: 1px solid #e2e8f0; }
         .tasks-table tbody tr:nth-child(even) { background: #f8fafc; }
         .task-filter { width: 100%; margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; background: white; font-weight: 400; }
@@ -36,11 +43,12 @@
             <div class="overflow-x-auto" tabindex="0" role="region" aria-label="Tasks table; scroll horizontally for all columns">
                 <table class="tasks-table text-left text-sm">
                     <caption class="sr-only">Tasks visible to you. Search descriptions and related IDs, select filters or sort by complete by date.</caption>
+                    <colgroup><col class="task-description-column"><col class="task-related-column"><col class="task-date-column"><col class="task-status-column"><col class="task-person-column"><col class="task-person-column"></colgroup>
                     <thead class="bg-slate-50 text-xs text-slate-600"><tr>
                         <th scope="col"><label for="task-description">Task Description</label><input id="task-description" class="task-filter" type="search" name="description" maxlength="255" value="{{ $filters['description'] ?? '' }}" placeholder="Type a few characters"></th>
-                        <th scope="col" aria-sort="{{ ($filters['direction'] ?? 'asc') === 'asc' ? 'ascending' : 'descending' }}"><button type="button" id="task-date-sort" class="text-left font-bold" aria-label="Sort complete by date {{ ($filters['direction'] ?? 'asc') === 'asc' ? 'latest first' : 'earliest first' }}">Complete by date <span aria-hidden="true">{{ ($filters['direction'] ?? 'asc') === 'asc' ? '↑' : '↓' }}</span></button></th>
                         <th scope="col"><label for="task-relates">Relates to</label><input id="task-relates" class="task-filter" type="search" name="relates_to" maxlength="80" value="{{ $filters['relates_to'] ?? '' }}" placeholder="Lead / application ID"></th>
-                        @foreach(['assignee' => ['Assignee', $assignees], 'creator' => ['Task created by', $creators], 'status' => ['Status', collect(\App\Models\ApplicationActivity::TASK_STATUSES)->map(fn($status) => (object) ['id' => $status, 'name' => $status])]] as $key => [$label, $options])
+                        <th scope="col" aria-sort="{{ ($filters['direction'] ?? 'asc') === 'asc' ? 'ascending' : 'descending' }}"><button type="button" id="task-date-sort" class="text-left font-bold" aria-label="Sort complete by date {{ ($filters['direction'] ?? 'asc') === 'asc' ? 'latest first' : 'earliest first' }}">Complete by date <span aria-hidden="true">{{ ($filters['direction'] ?? 'asc') === 'asc' ? '↑' : '↓' }}</span></button></th>
+                        @foreach(['status' => ['Status', collect(\App\Models\ApplicationActivity::TASK_STATUSES)->map(fn($status) => (object) ['id' => $status, 'name' => $status])], 'assignee' => ['Assignee', $assignees], 'creator' => ['Task created by', $creators]] as $key => [$label, $options])
                             <th scope="col">{{ $label }}
                                 <details class="task-filter"><summary class="cursor-pointer">{{ empty($filters[$key]) ? 'All' : count($filters[$key]).' selected' }}</summary>
                                     <div class="mt-3 max-h-52 space-y-2 overflow-y-auto">
@@ -52,13 +60,23 @@
                     </tr></thead>
                     <tbody>
                         @forelse($tasks as $task)
-                            <tr>
+                            <tr data-task-row="{{ $task->id }}">
                                 <td class="font-medium text-[#101820]">{{ $task->title }}</td>
+                                <td>
+                                    @if($task->application)
+                                        <a href="{{ route('applications.show', $task->application_id) }}" class="task-related-link" aria-label="Open {{ $task->related_reference }}{{ $task->related_context ? ' for '.$task->related_context : '' }}">
+                                            <span class="task-related-context">{{ $task->related_context ?: $task->related_reference }}</span>
+                                            <span class="task-related-reference">{{ $task->related_reference }} · {{ $task->application->type_label }}</span>
+                                        </a>
+                                    @elseif($task->lead)
+                                        <span class="task-related-context">{{ $task->related_context ?: $task->related_reference }}</span>
+                                        <span class="task-related-reference">{{ $task->related_reference }} · Lead</span>
+                                    @else <span class="text-slate-500">—</span> @endif
+                                </td>
                                 <td class="whitespace-nowrap {{ $task->due_date?->isBefore(today()) && $task->task_status !== 'Done' ? 'font-semibold text-red-700' : '' }}">{{ $task->due_date?->format('d/m/Y') ?? '—' }}</td>
-                                <td>{{ $task->related_reference ?: '—' }}</td>
+                                <td><span class="inline-block rounded-full px-2.5 py-1 text-xs font-medium {{ $task->task_status === 'Done' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-700' }}">{{ $task->task_status }}</span></td>
                                 <td>{{ $task->assignee?->name ?? 'Unassigned' }}</td>
                                 <td>{{ $task->creator?->name ?? 'Unknown (legacy task)' }}</td>
-                                <td><span class="inline-block rounded-full px-2.5 py-1 text-xs font-medium {{ $task->task_status === 'Done' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-700' }}">{{ $task->task_status }}</span></td>
                             </tr>
                         @empty
                             <tr><td colspan="6" class="h-36 text-center text-slate-500">No tasks match your access and filters.</td></tr>

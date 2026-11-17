@@ -34,9 +34,9 @@ document.querySelectorAll('[data-critical-date-range]').forEach(root => {
         ariaDateFormat: 'l, j F Y',
         onReady: (_dates, _value, instance) => {
             instance.calendarContainer.classList.add('critical-range-picker');
-            instance.calendarContainer.id = 'critical-date-calendar';
+            instance.calendarContainer.id = `${input.id}-calendar`;
             instance.calendarContainer.setAttribute('role', 'dialog');
-            instance.calendarContainer.setAttribute('aria-label', 'Choose critical date range');
+            instance.calendarContainer.setAttribute('aria-label', `Choose ${root.dataset.rangeLabel.toLowerCase()}`);
             input.setAttribute('aria-controls', instance.calendarContainer.id);
             hint = document.createElement('p');
             hint.className = 'critical-range-hint';

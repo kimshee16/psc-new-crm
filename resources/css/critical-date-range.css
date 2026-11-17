@@ -1,5 +1,5 @@
 .critical-date-range { position: relative; min-width: 245px; margin-top: 10px; }
-.critical-date-range .application-filter { margin-top: 0; padding-right: 53px; cursor: pointer; }
+.critical-date-range [data-range-input] { margin-top: 0; padding-right: 53px; cursor: pointer; }
 .critical-range-calendar { position: absolute; right: 10px; top: 10px; color: #64748b; pointer-events: none; }
 .critical-range-clear { position: absolute; right: 29px; top: 4px; display: grid; place-items: center; width: 26px; height: 28px; border-radius: 4px; color: #64748b; cursor: pointer; }
 .critical-range-clear[hidden] { display: none; }

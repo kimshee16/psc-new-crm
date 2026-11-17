@@ -75,6 +75,17 @@ class ApplicationActivity extends Model
         return $this->application?->record_reference ?? $this->lead?->lead_id ?? '';
     }
 
+    public function getRelatedContextAttribute(): string
+    {
+        if ($this->application) {
+            return $this->application->owner_name ?: ($this->application->nominee_name ?: $this->application->type_label);
+        }
+
+        return $this->lead ? trim(implode(' ', array_filter([
+            $this->lead->first_name, $this->lead->middle_name, $this->lead->surname,
+        ]))) : '';
+    }
+
     protected function casts(): array
     {
         return ['due_date' => 'date:Y-m-d', 'amount' => 'decimal:2'];

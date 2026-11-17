@@ -76,8 +76,9 @@ class TasksController extends Controller
             fwrite($handle, "\xEF\xBB\xBF");
             fputcsv($handle, TaskList::COLUMNS, ',', '"', '');
             foreach ($query->lazy(200) as $task) {
-                $row = [$task->title, $task->due_date?->format('Y-m-d') ?? '', $task->related_reference,
-                    $task->assignee?->name ?? '', $task->creator?->name ?? '', $task->task_status];
+                $related = $task->related_context ? $task->related_context.' ('.$task->related_reference.')' : $task->related_reference;
+                $row = [$task->title, $related, $task->due_date?->format('Y-m-d') ?? '', $task->task_status,
+                    $task->assignee?->name ?? '', $task->creator?->name ?? ''];
                 $row = array_map(fn ($value) => preg_match('/^[\s\x{FEFF}]*[=+@-]|^[\t\r\n]/u', $value) ? "'".$value : $value, $row);
                 fputcsv($handle, $row, ',', '"', '');
             }

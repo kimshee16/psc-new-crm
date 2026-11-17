@@ -27,7 +27,7 @@ class RfiList
     {
         $query = $this->visible($user)->with(['application', 'officer']);
         if (empty($filters['display_closed'])) {
-            $query->where(fn (Builder $active) => $active->where('status', '!=', 'Closed')->orWhereNull('status'));
+            $query->outstanding();
         }
         if (filled($filters['application_id'] ?? null)) {
             $term = $this->pattern($filters['application_id']);

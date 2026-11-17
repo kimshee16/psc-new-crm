@@ -1,6 +1,7 @@
 @extends('layouts.payroll')
 
 @section('content')
+    @vite('resources/js/critical-date-range.js')
     @include('crm.rfis.styles')
     <header class="mb-7"><h1 class="text-[26px] font-bold">RFIs</h1><p class="mt-2 text-sm text-slate-600">Requests assigned to you or linked to applications where you are a counsellor or migration agent.</p></header>
     @if(session('success'))<div role="status" class="mb-4 rounded-md bg-green-50 p-4 text-sm text-green-800">{{ session('success') }}</div>@endif

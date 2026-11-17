@@ -6,6 +6,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -78,6 +79,11 @@ class User extends Authenticatable
     public function canAccessMyOffices(): bool
     {
         return in_array($this->account_type, self::MY_OFFICES_ACCOUNT_TYPES, true);
+    }
+
+    public function migrationAgentDetails(): HasOne
+    {
+        return $this->hasOne(MigrationAgent::class);
     }
 
     public function hasPortalAccess(): bool

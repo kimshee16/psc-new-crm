@@ -5,6 +5,13 @@
 - Put the accomplishment lines clearly at the end of the final response, separate from explanation and validation details. Never wait for the user to request them.
 - Report only work actually completed in the available conversation or verified records. Do not infer completed work or ticket IDs from screenshots alone.
 
+# Ticket deployment workflow
+
+- Completed ticket work must be committed and pushed to `origin/main`, then deployed on staging through Git. Apply this to all completed tickets and follow-up fixes without asking for confirmation again.
+- Fetch and inspect both checkouts first. Preserve unrelated local changes, staging-only configuration, `.env`, uploads and database records. Back up or stash prior deployment copies before fast-forwarding staging to the exact pushed commit; do not overwrite source files through SCP as the deployment method.
+- Build production assets on staging from that Git checkout, run required additive migrations, refresh Laravel caches and verify the deployed pages. Confirm local `main`, remote `main` and staging `HEAD` identify the same commit before reporting deployment complete.
+- Preserve the existing four-hour daily worklog total when recording deployment follow-ups; update accomplishment notes without adding duplicate time.
+
 # Jira worklog workflow
 
 - Automatically create or update Jira worklogs after completing requested ticket work, including development, fixes, test data and validation. The user re-enabled automatic worklog and spreadsheet updates on November 10, 2026. Follow the formatting, allocation and duplicate-prevention rules below without asking for confirmation again.

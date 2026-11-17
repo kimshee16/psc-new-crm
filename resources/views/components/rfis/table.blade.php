@@ -27,8 +27,9 @@
                                 @foreach($options as $value => $option)<label class="flex items-start gap-2"><input type="checkbox" name="{{ $key }}[]" value="{{ $value }}" @checked(in_array((string) $value, array_map('strval', $filters[$key] ?? []), true))> {{ $option }}</label>@endforeach
                             </div></details>
                         @elseif(in_array($column, ['received_date', 'due_date', 'lodged_date']))
-                            <label class="mt-2 block font-normal">From<input class="rfi-filter rfi-date-filter" type="date" name="{{ $column }}_from" value="{{ $filters[$column.'_from'] ?? '' }}" aria-label="{{ $label }} from"></label>
-                            <label class="mt-2 block font-normal">To<input class="rfi-filter rfi-date-filter" type="date" name="{{ $column }}_to" value="{{ $filters[$column.'_to'] ?? '' }}" aria-label="{{ $label }} to"></label>
+                            <x-applications.critical-date-range :id="'rfi-'.$column.'-range'" :label="$label.' range'"
+                                :from="$filters[$column.'_from'] ?? ''" :to="$filters[$column.'_to'] ?? ''"
+                                :from-name="$column.'_from'" :to-name="$column.'_to'" input-class="rfi-filter" />
                         @endif
                     @endif
                 </th>

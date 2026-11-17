@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class TaskList
 {
-    public const COLUMNS = ['Task Description', 'Complete by date', 'Relates to', 'Assignee', 'Task created by', 'Status'];
+    public const COLUMNS = ['Task Description', 'Relates to', 'Complete by date', 'Status', 'Assignee', 'Task created by'];
 
     public function staff(User $user): Builder
     {
@@ -38,7 +38,7 @@ class TaskList
 
     public function filtered(User $user, array $filters): Builder
     {
-        $query = $this->visible($user)->with(['application', 'lead', 'assignee', 'creator']);
+        $query = $this->visible($user)->with(['application.client', 'application.organisation', 'lead', 'assignee', 'creator']);
         if (filled($filters['description'] ?? null)) {
             $this->contains($query, 'title', $filters['description']);
         }

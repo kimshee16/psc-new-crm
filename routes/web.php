@@ -14,6 +14,7 @@ use App\Http\Controllers\EventReferralConfigurationController;
 use App\Http\Controllers\EventRegistrationFormController;
 use App\Http\Controllers\HolidaysController;
 use App\Http\Controllers\LeadsController;
+use App\Http\Controllers\MigrationAgentConfigurationController;
 use App\Http\Controllers\MyOfficesController;
 use App\Http\Controllers\NominationSubclassConfigurationController;
 use App\Http\Controllers\OrganisationApplicationsController;
@@ -158,6 +159,10 @@ $registerRoutes = function () {
         Route::patch('/holidays/{holiday}/cancel', [HolidaysController::class, 'cancel'])->name('holidays.cancel');
 
         Route::get('/configuration', [ConfigurationController::class, 'index'])->name('configuration');
+        Route::post('/configuration/migration-agents', [MigrationAgentConfigurationController::class, 'store'])->name('configuration.migration-agents.store');
+        Route::patch('/configuration/migration-agents/{migrationAgent}', [MigrationAgentConfigurationController::class, 'update'])->name('configuration.migration-agents.update');
+        Route::delete('/configuration/migration-agents/{migrationAgent}', [MigrationAgentConfigurationController::class, 'destroy'])->name('configuration.migration-agents.destroy');
+        Route::get('/configuration/migration-agents/{migrationAgent}/signature', [MigrationAgentConfigurationController::class, 'signature'])->name('configuration.migration-agents.signature');
         Route::post('/configuration/nomination-subclasses', [NominationSubclassConfigurationController::class, 'store'])->name('configuration.nomination-subclasses.store');
         Route::patch('/configuration/nomination-subclasses/{nominationSubclass}', [NominationSubclassConfigurationController::class, 'update'])->name('configuration.nomination-subclasses.update');
         Route::delete('/configuration/nomination-subclasses/{nominationSubclass}', [NominationSubclassConfigurationController::class, 'destroy'])->name('configuration.nomination-subclasses.destroy');

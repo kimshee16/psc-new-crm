@@ -194,4 +194,9 @@ class Application extends Model
     {
         return $this->belongsTo(User::class, 'migration_agent_id');
     }
+
+    public function getMigrationAgentDetailsAttribute(): ?MigrationAgent
+    {
+        return $this->migrationAgent?->migrationAgentDetails;
+    }
 }

@@ -32,9 +32,30 @@ class ApplicationRfisTest extends TestCase
             $application->rfis()->create($this->data($user));
             $application->rfis()->create($this->data($user, ['status' => 'Closed']));
             $this->get(route('applications.show', ['application' => $application, 'tab' => 'rfi']))
-                ->assertOk()->assertSee('Add RFI')->assertSee('1 active RFIs')
+                ->assertOk()->assertSee('Add RFI')->assertSee('1 outstanding RFI')
                 ->assertSee('RFI (s56 notice)')->assertSee('Closed')->assertSee('Open notes for RFI')
                 ->assertViewHas('rfis', fn ($rfis) => $rfis->total() === 2);
+        }
+    }
+
+    public function test_outstanding_badge_includes_every_non_closed_status_and_legacy_null_on_every_tab(): void
+    {
+        $user = User::factory()->create();
+        $application = $this->application($user);
+        foreach (ApplicationRfi::STATUSES as $status) {
+            $application->rfis()->create($this->data($user, ['status' => $status]));
+        }
+        $application->rfis()->create($this->data($user, ['status' => null]));
+        $application->activities()->create(['kind' => 'tasks', 'title' => 'Unrelated task', 'status' => 'To Do']);
+        $this->application($user)->rfis()->create($this->data($user));
+        // The count covers the application, independently of the RFI table page.
+        for ($i = 0; $i < 10; $i++) {
+            $application->rfis()->create($this->data($user, ['status' => 'Closed']));
+        }
+        $this->actingAs($user);
+        foreach ([[], ['tab' => 'rfi'], ['tab' => 'rfi', 'page' => 2]] as $query) {
+            $this->get(route('applications.show', ['application' => $application] + $query))
+                ->assertOk()->assertSee('data-outstanding-rfi-count="5"', false)->assertSee('5 outstanding RFIs');
         }
     }
 
@@ -110,11 +131,12 @@ class ApplicationRfisTest extends TestCase
         $this->assertSame('Received', $rfi->fresh()->status);
         $this->patch(route('rfis.update', $rfi), $this->data($user, ['status' => 'Closed', 'closed_confirmed' => '1']))
             ->assertSessionHasNoErrors();
-        $this->get(route('applications.show', ['application' => $application, 'tab' => 'rfi']))->assertOk()->assertSee('0 active RFIs');
+        $this->get(route('applications.show', ['application' => $application, 'tab' => 'rfi']))->assertOk()->assertSee('0 outstanding RFIs');
         $this->get(route('rfis'))->assertViewHas('rfis', fn ($rows) => $rows->total() === 0);
         $this->get(route('rfis', ['display_closed' => 1]))->assertViewHas('rfis', fn ($rows) => $rows->total() === 1);
         $this->patch(route('rfis.update', $rfi), $this->data($user))->assertSessionHasNoErrors();
         $this->assertSame('Received', $rfi->fresh()->status);
+        $this->get(route('applications.show', $application))->assertOk()->assertSee('1 outstanding RFI');
     }
 
     public function test_notes_are_editable_and_only_admins_can_delete_visible_rfis(): void
@@ -132,6 +154,7 @@ class ApplicationRfisTest extends TestCase
         $this->actingAs($admin)->delete(route('rfis.destroy', $rfi))->assertRedirect(route('rfis'));
         $this->assertDatabaseMissing('application_activities', ['id' => $rfi->id]);
         Storage::disk('local')->assertMissing($rfi->request_letter_path);
+        $this->get(route('applications.show', $application))->assertOk()->assertSee('0 outstanding RFIs');
     }
 
     public function test_all_record_actions_and_files_require_rfi_access_and_respect_disabled_tabs(): void

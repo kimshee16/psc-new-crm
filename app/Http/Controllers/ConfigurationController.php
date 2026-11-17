@@ -8,6 +8,7 @@ use App\Models\EducationLevel;
 use App\Models\EventReferral;
 use App\Models\LeadRedirection;
 use App\Models\Location;
+use App\Models\MigrationAgent;
 use App\Models\NominationSubclass;
 use App\Models\Office;
 use App\Models\PscEvent;
@@ -61,6 +62,9 @@ class ConfigurationController extends Controller
 
         return view('crm.configuration.index', [
             'title' => 'PSC CRM - Configuration',
+            'migrationAgents' => MigrationAgent::with('user')->orderBy('first_name')->orderBy('last_name')->orderBy('id')->get(),
+            'editingMigrationAgent' => $request->query('tab') === 'migration-agents' && $request->query('edit')
+                ? MigrationAgent::findOrFail($request->query('edit')) : null,
             'eventReferrals' => EventReferral::query()->orderBy('sort_order')->orderBy('name')->get(),
             'events' => PscEvent::query()->orderByDesc('starts_at')->orderByDesc('id')
                 ->paginate(20, ['*'], 'event_page')->appends(['tab' => 'events']),
@@ -433,6 +437,6 @@ class ConfigurationController extends Controller
     {
         $tab = (string) $request->query('tab', 'locations');
 
-        return in_array($tab, ['locations', 'education-levels', 'offices', 'regions', 'users', 'redirections', 'countries', 'events', 'event-marketing', 'application-types', 'nomination-subclasses'], true) ? $tab : 'locations';
+        return in_array($tab, ['locations', 'education-levels', 'offices', 'regions', 'users', 'redirections', 'countries', 'events', 'event-marketing', 'application-types', 'nomination-subclasses', 'migration-agents'], true) ? $tab : 'locations';
     }
 }

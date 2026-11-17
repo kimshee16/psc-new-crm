@@ -7,7 +7,6 @@
     .rfi-table th:nth-child(2) { min-width: 190px; }
     .rfi-table [data-rfi-sort] { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
     .rfi-filter { display: block; width: 100%; margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; background: white; font-weight: 400; }
-    .rfi-date-filter { width: 150px; }
     .rfi-dialog { width: min(600px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; border: 0; border-radius: 12px; padding: 24px; box-shadow: 0 24px 50px #0004; }
     .rfi-dialog::backdrop { background: #20282e99; }
     .rfi-editor label { display: block; min-width: 0; font-size: 14px; font-weight: 600; }

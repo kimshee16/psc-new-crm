@@ -41,6 +41,11 @@ class ApplicationRfi extends Model
             : ($this->request_type ?: $this->title ?: 'Other');
     }
 
+    public function scopeOutstanding(Builder $query): void
+    {
+        $query->where(fn (Builder $outstanding) => $outstanding->where('status', '!=', 'Closed')->orWhereNull('status'));
+    }
+
     public function application(): BelongsTo
     {
         return $this->belongsTo(Application::class);

@@ -10,6 +10,7 @@ use App\Models\Office;
 use App\Models\Organisation;
 use App\Models\Region;
 use App\Models\User;
+use App\Support\PSC\TaskList;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -166,6 +167,48 @@ class TasksPageTest extends TestCase
         $this->postJson(route('tasks.store'), $this->payload(['related_type' => 'application', 'related_id' => '0']))->assertUnprocessable();
         $this->postJson(route('tasks.store'), $this->payload(['related_type' => 'lead', 'related_id' => 'missing']))->assertUnprocessable();
         $this->assertDatabaseCount('application_activities', 2);
+    }
+
+    public function test_related_applications_show_client_and_organisation_context_with_direct_links_and_matching_csv(): void
+    {
+        $client = $this->lead('LEAD-1234')->client;
+        $client->update(['first_name' => 'Ana', 'middle_name' => 'Maria', 'surname' => 'Santos']);
+        $visa = Application::create(['category' => 'Visa', 'client_id' => $client->id]);
+        $organisation = Organisation::create(['name' => 'Example Employer Pty Ltd', 'created_by_user_id' => $this->counsellor->id]);
+        $sbs = $organisation->applications()->create(['category' => 'SBS']);
+        $this->task($this->counsellor, ['application_id' => $visa->id, 'title' => 'Review visa documents']);
+        $this->task($this->counsellor, ['application_id' => $sbs->id, 'title' => 'Review sponsorship']);
+        $this->task($this->counsellor, ['title' => 'Standalone follow-up']);
+
+        $response = $this->get(route('tasks'))->assertOk()
+            ->assertSeeInOrder(['Task Description', 'Relates to', 'Complete by date', 'Status', 'Assignee', 'Task created by'])
+            ->assertSee('Ana Maria Santos')->assertSee('Example Employer Pty Ltd')
+            ->assertSee('href="'.route('applications.show', $visa).'"', false)
+            ->assertSee('href="'.route('applications.show', $sbs).'"', false)
+            ->assertSee($visa->record_reference)->assertSee($sbs->record_reference)->assertSee('Standalone follow-up');
+        $tasks = $response->viewData('tasks');
+        foreach ($tasks->whereNotNull('application_id') as $task) {
+            $this->assertTrue($task->application->relationLoaded('client'));
+            $this->assertTrue($task->application->relationLoaded('organisation'));
+        }
+        $csv = $this->get(route('tasks.export'))->assertOk()->streamedContent();
+        $this->assertStringContainsString('Ana Maria Santos ('.$visa->record_reference.')', $csv);
+        $this->assertStringContainsString('Example Employer Pty Ltd ('.$sbs->record_reference.')', $csv);
+        $rows = array_map('str_getcsv', explode("\n", trim(substr($csv, 3))));
+        $this->assertSame(TaskList::COLUMNS, $rows[0]);
+        $this->assertSame(6, count($rows[1]));
+        $this->assertSame('To Do', $rows[1][3]);
+    }
+
+    public function test_task_links_preserve_application_access_and_escape_related_context(): void
+    {
+        $organisation = Organisation::create(['name' => '<script>Employer</script>', 'created_by_user_id' => $this->outside->id]);
+        $application = $organisation->applications()->create(['category' => 'SBS', 'primary_counsellor_id' => $this->outside->id]);
+        $this->task($this->counsellor, ['application_id' => $application->id]);
+        $this->get(route('tasks'))->assertOk()->assertSee('&lt;script&gt;Employer&lt;/script&gt;', false)
+            ->assertDontSee('<script>Employer</script>', false)
+            ->assertSee('href="'.route('applications.show', $application).'"', false);
+        $this->get(route('applications.show', $application))->assertNotFound();
     }
 
     public function test_csv_exports_all_filtered_rows_in_display_order_with_formula_protection(): void

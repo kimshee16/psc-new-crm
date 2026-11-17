@@ -62,7 +62,7 @@ class ApplicationsController extends Controller
     {
         $record = Application::query()->assignedTo($request->user())
             ->with(['client', 'organisation', 'workflow', 'primaryCounsellor', 'secondaryCounsellor', 'migrationAgent', 'nomineeClient'])
-            ->withCount(['rfis as active_rfi_count' => fn ($query) => $query->where(fn ($active) => $active->where('status', '!=', 'Closed')->orWhereNull('status'))])
+            ->withCount(['rfis as active_rfi_count' => fn ($query) => $query->outstanding()])
             ->findOrFail($application);
 
         $tabs = ApplicationTypeSetting::tabsFor($record->category, $record->sponsor_type);
