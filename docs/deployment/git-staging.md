@@ -12,7 +12,7 @@ git fetch origin
 git pull --ff-only origin main
 export PATH="$HOME/.local/psc-crm-node/node-v22.14.0-linux-x64/bin:$PATH"
 npm ci --no-audit --no-fund
-RAYON_NUM_THREADS=2 npm run build
+GOMAXPROCS=1 UV_THREADPOOL_SIZE=1 RAYON_NUM_THREADS=1 npm run build
 php artisan migrate --force --no-interaction
 php artisan optimize:clear
 php artisan config:cache
@@ -21,3 +21,5 @@ php artisan view:cache
 ```
 
 Review pending migrations before running them. Never run `migrate:refresh`, seed example records or replace the database during deployment. Verify the authenticated Tasks, RFI and Migration Agents pages, generated assets and existing record counts. Confirm staging `HEAD`, `origin/main` and the pushed local commit match. Preserve existing daily worklog hours when updating deployment accomplishments.
+
+The shared host limits concurrent processes/threads. Keep all three build concurrency settings above; an unrestricted esbuild process can exceed the limit. Back up `public/build` before building, keep staging in maintenance mode while assets are replaced, and restore the asset backup if the build fails before bringing the app back up.
