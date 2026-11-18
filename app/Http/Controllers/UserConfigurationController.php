@@ -120,6 +120,9 @@ class UserConfigurationController extends Controller
 
     private function validateAccess(Request $request, User $user, array $data, string $prefix = ''): void
     {
+        abort_if($request->user()->account_type !== 'Super Admin'
+            && ($user->account_type === 'Super Admin' || $data['account_type'] === 'Super Admin'), 403);
+
         if (count($data['offices']) !== count(array_unique($data['offices']))) {
             throw ValidationException::withMessages([$prefix.'offices' => 'Select each office only once.']);
         }

@@ -1,5 +1,9 @@
 @props(['rfis', 'filterable' => false, 'filters' => [], 'officers' => [], 'returnTo' => 'list'])
 @php
+    $access = app(\App\Support\PSC\CrmAccess::class);
+    $showRfiNotes = $access->notes(auth()->user(), 'rfis');
+    $editRfiNotes = $access->notes(auth()->user(), 'rfis', write: true);
+    $editRfi = $access->allows(auth()->user(), 'rfis', 'edit');
     $columns = \App\Support\PSC\RfiList::COLUMNS;
     if (!$filterable) unset($columns['application_id']);
 @endphp
@@ -52,8 +56,8 @@
                     <td>@if($rfi->request_letter_path)<a href="{{ route('rfis.document', ['rfi' => $rfi, 'document' => 'request_letter']) }}" target="_blank" rel="noopener" class="font-semibold text-[#1f7890] underline" aria-label="View request letter for RFI {{ $rfi->id }}">View</a>@else — @endif</td>
                     <td class="whitespace-nowrap">{{ $rfi->lodged_date?->format('d/m/Y') ?? '—' }}</td>
                     <td>@if($rfi->proof_of_lodgement_path)<a href="{{ route('rfis.document', ['rfi' => $rfi, 'document' => 'proof_of_lodgement']) }}" target="_blank" rel="noopener" class="font-semibold text-[#1f7890] underline" aria-label="View proof of lodgement for RFI {{ $rfi->id }}">View</a>@else — @endif</td>
-                    <td><button type="button" data-rfi-notes="rfi-notes-{{ $rfi->id }}" class="flex items-center gap-1 rounded-md border border-slate-300 px-3 py-2 text-[#1f7890]" aria-label="Open notes for RFI {{ $rfi->id }}">{!! payroll_icon('note', 'h-4 w-4') !!}<span>{{ filled($rfi->notes) ? 'Notes' : 'Add notes' }}</span></button></td>
-                    <td><a href="{{ route('rfis.edit', ['rfi' => $rfi, 'return_to' => $returnTo]) }}" class="font-semibold text-[#1f7890] underline">Edit</a></td>
+                    <td>@if($showRfiNotes)<button type="button" data-rfi-notes="rfi-notes-{{ $rfi->id }}" class="flex items-center gap-1 rounded-md border border-slate-300 px-3 py-2 text-[#1f7890]" aria-label="Open notes for RFI {{ $rfi->id }}">{!! payroll_icon('note', 'h-4 w-4') !!}<span>{{ filled($rfi->notes) || !$editRfiNotes ? 'Notes' : 'Add notes' }}</span></button>@endif</td>
+                    <td>@if($editRfi)<a href="{{ route('rfis.edit', ['rfi' => $rfi, 'return_to' => $returnTo]) }}" class="font-semibold text-[#1f7890] underline">Edit</a>@endif</td>
                 </tr>
             @empty
                 <tr><td colspan="{{ count($columns) + 1 }}" class="h-32 text-center text-slate-500">No RFI records yet.</td></tr>

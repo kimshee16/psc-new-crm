@@ -18,7 +18,7 @@ class OrganisationList
         $today = today();
         $activeSbs = fn (Builder $query) => $query->where('category', 'SBS')
             ->whereRaw("LOWER(TRIM(status)) = 'active'");
-        $rows = Organisation::query()->when(! $global, fn (Builder $query) => $query->visibleTo($user))
+        $rows = Organisation::query()->when(! $global || app(CrmAccess::class)->scope($user) !== 'existing', fn (Builder $query) => $query->visibleTo($user))
             ->select('organisations.*')->withExists([
                 'applications as sbs_held' => $activeSbs,
                 'applications as renew' => function (Builder $query) use ($activeSbs, $today) {

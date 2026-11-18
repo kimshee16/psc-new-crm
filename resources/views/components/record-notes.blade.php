@@ -1,5 +1,10 @@
 @props(['stored' => '', 'module', 'recordId', 'editable' => false, 'notice' => '', 'sharedClient' => false, 'sectionId' => null, 'heading' => null])
 @php
+    $notesAccess = app(\App\Support\PSC\CrmAccess::class);
+@endphp
+@if($notesAccess->notes(auth()->user(), $module))
+@php
+    $editable = $editable && $notesAccess->notes(auth()->user(), $module, write: true);
     $notesService = app(\App\Support\PSC\RecordNotes::class);
     $notes = $notesService->all($stored);
 @endphp
@@ -117,3 +122,4 @@ if (!window.pscRecordNotesReady) {
 }
 </script>
 @endonce
+@endif

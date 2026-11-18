@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Application;
 use App\Models\Client;
 use App\Support\PSC\RecordNotes;
+use App\Support\PSC\CrmAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,6 +29,7 @@ class RecordNotesController extends Controller
         $owner = $notes->owner($record);
         $sharedClient = ! $owner->is($record);
         if ($owner instanceof Client) {
+            abort_unless(app(CrmAccess::class)->notes($request->user(), 'clients', write: true), 403);
             abort_unless(app(ClientsController::class)->canManageNotes($owner, $request->user()), 403);
         }
         $owner = $notes->mutate($owner, $request->user(), $data['version'], $action, $noteId, $data['body'] ?? null);

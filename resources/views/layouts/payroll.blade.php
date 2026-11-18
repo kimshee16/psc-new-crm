@@ -1,7 +1,8 @@
 @php
     $activeRoute = Route::currentRouteName();
     $user = auth()->user();
-    $showMyOffices = $user?->canAccessMyOffices() ?? false;
+    $access = app(\App\Support\PSC\CrmAccess::class);
+    $showMyOffices = $user && $access->allows($user, 'my-offices');
     $headerOffice = ($user?->defaultOfficeCode() ?? \App\Models\Office::defaultCode()).' Office';
     $headerAccountType = $user?->account_type ?? 'Counsellor';
     $navItems = [
@@ -28,6 +29,8 @@
         ['route' => 'reports', 'label' => 'Reports', 'icon' => 'reports'],
         ['route' => 'holidays', 'label' => 'Holidays', 'icon' => 'calendar', 'activeRoutes' => ['holidays', 'holidays.create', 'holidays.edit']],
         ['route' => 'configuration', 'label' => 'Configuration', 'icon' => 'settings', 'activeRoutes' => ['configuration', 'configuration.locations.store', 'configuration.locations.update', 'configuration.locations.destroy', 'configuration.education-levels.store', 'configuration.education-levels.update', 'configuration.education-levels.destroy']],
+        ...($user && $access->allows($user, 'configuration', 'edit')
+            ? [['route' => 'role-privileges', 'label' => 'Access & Privileges', 'icon' => 'settings']] : []),
     ];
 @endphp
 <!doctype html>
@@ -55,6 +58,7 @@
                 </div>
                 <nav class="flex-1 overflow-y-auto px-2 py-6">
                     @foreach ($navItems as $item)
+                        @continue($user && isset(\App\Support\PSC\CrmAccess::MODULES[\Illuminate\Support\Str::before($item['route'], '.')]) && !$access->allows($user, \Illuminate\Support\Str::before($item['route'], '.')))
                         @php
                             $children = $item['children'] ?? [];
                             $childRoutes = array_column($children, 'route');
@@ -72,6 +76,7 @@
                                 </summary>
                                 <div class="mt-1 space-y-1 pl-11">
                                     @foreach ($children as $child)
+                                        @continue($user && !$access->allows($user, $child['route'] === 'my-offices.rfi' ? 'rfis' : \Illuminate\Support\Str::after($child['route'], '.')))
                                         @php $isChildActive = $activeRoute === $child['route']; @endphp
                                         <a href="{{ route($child['route']) }}"
                                            class="block rounded-md px-3 py-2 text-sm font-medium transition {{ $isChildActive ? 'bg-white/15 text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white' }}">

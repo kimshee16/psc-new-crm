@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Lead;
 use App\Models\PscEvent;
 use App\Models\User;
+use App\Support\PSC\CrmAccess;
 use App\Support\PSC\ApplicationCreation;
 use App\Support\PSC\WebsiteLeadReferences;
 use Illuminate\Database\Eloquent\Builder;
@@ -343,9 +344,20 @@ class LeadsController extends Controller
         ];
     }
 
-    private function visibleLeadQuery(User $user): Builder
+    public function visibleLeadQuery(User $user): Builder
     {
         $query = Lead::query();
+        $access = app(CrmAccess::class);
+        if (! $access->allows($user, 'leads')) {
+            return $query->whereRaw('1 = 0');
+        }
+        if ($access->scope($user) === 'assigned') {
+            return $query->where('assigned_user_id', $user->id);
+        }
+        if (in_array($access->scope($user), ['office', 'region'], true)) {
+            return $query->where(fn (Builder $scope) => $scope->where('assigned_user_id', $user->id)
+                ->orWhereIn('assigned_office_code', $access->offices($user)));
+        }
         $officeCodes = $user->accessibleOfficeCodes();
 
         if ($this->canViewAllLeadOffices($user)) {

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\ApplicationTypeSetting;
+use App\Models\ApplicationWorkflow;
+use App\Models\Checkpoint;
 use App\Models\Country;
 use App\Models\EducationLevel;
 use App\Models\EventReferral;
@@ -98,6 +100,11 @@ class ConfigurationController extends Controller
                 ? NominationSubclass::findOrFail($request->query('edit')) : null,
             'applicationTabOptions' => ApplicationTypeSetting::TABS,
             'applicationTypeSettings' => ApplicationTypeSetting::query()->get()->keyBy('category'),
+            'checkpoints' => Checkpoint::query()->orderBy('name')->orderBy('id')->get(),
+            'editingCheckpoint' => $request->query('tab') === 'checkpoints' && $request->query('edit')
+                ? Checkpoint::findOrFail($request->query('edit')) : null,
+            'applicationWorkflows' => $request->query('tab') === 'workflow-checkpoints'
+                ? ApplicationWorkflow::query()->orderBy('category')->orderBy('name')->get() : collect(),
             'educationLevels' => EducationLevel::query()
                 ->orderBy('sort_order')
                 ->orderBy('name')
@@ -437,6 +444,6 @@ class ConfigurationController extends Controller
     {
         $tab = (string) $request->query('tab', 'locations');
 
-        return in_array($tab, ['locations', 'education-levels', 'offices', 'regions', 'users', 'redirections', 'countries', 'events', 'event-marketing', 'application-types', 'nomination-subclasses', 'migration-agents'], true) ? $tab : 'locations';
+        return in_array($tab, ['locations', 'education-levels', 'offices', 'regions', 'users', 'redirections', 'countries', 'events', 'event-marketing', 'application-types', 'nomination-subclasses', 'migration-agents', 'checkpoints', 'workflow-checkpoints'], true) ? $tab : 'locations';
     }
 }

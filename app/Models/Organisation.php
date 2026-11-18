@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PSC\CrmAccess;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,7 +19,7 @@ class Organisation extends Model
     public function scopeVisibleTo(Builder $query, User $user): void
     {
         $query->where(fn (Builder $visible) => $visible
-            ->where('created_by_user_id', $user->id)
+            ->whereIn('created_by_user_id', app(CrmAccess::class)->staffInScope($user)->select('users.id'))
             ->orWhereHas('applications', fn (Builder $applications) => $applications->assignedTo($user)));
     }
 

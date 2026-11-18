@@ -3,6 +3,8 @@
 use App\Http\Controllers\ApplicationActivitiesController;
 use App\Http\Controllers\ApplicationLinksController;
 use App\Http\Controllers\ApplicationsController;
+use App\Http\Controllers\CheckpointConfigurationController;
+use App\Http\Controllers\RolePrivilegesController;
 use App\Http\Controllers\ApplicationTypeConfigurationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClientsController;
@@ -70,7 +72,7 @@ $registerRoutes = function () {
         ->middleware('auth')
         ->name('logout');
 
-    Route::middleware(['auth', 'active-user'])->group(function () {
+    Route::middleware(['auth', 'active-user', 'crm-privilege'])->group(function () {
         Route::get('/walk-in-forms', [CounsellorIntakeFormController::class, 'index'])->name('counsellor-intake.index');
         Route::post('/{module}/{recordId}/notes', [RecordNotesController::class, 'save'])
             ->whereIn('module', ['clients', 'leads', 'applications'])->whereNumber('recordId')->name('notes.store');
@@ -110,6 +112,7 @@ $registerRoutes = function () {
         Route::post('/applications/{application}/linked-items', [ApplicationLinksController::class, 'update'])->whereNumber('application')->name('applications.links.update');
         Route::get('/applications/{application}', [ApplicationsController::class, 'show'])->whereNumber('application')->name('applications.show');
         Route::patch('/applications/{application}', [ApplicationsController::class, 'update'])->whereNumber('application')->name('applications.update');
+        Route::patch('/applications/{application}/checkpoints', [ApplicationsController::class, 'updateCheckpoints'])->whereNumber('application')->name('applications.checkpoints.update');
         Route::get('/applications/{application}/organisation-details/edit', [OrganisationApplicationsController::class, 'edit'])->whereNumber('application')->name('applications.organisation-details.edit');
         Route::patch('/applications/{application}/organisation-details', [OrganisationApplicationsController::class, 'update'])->whereNumber('application')->name('applications.organisation-details.update');
         Route::post('/applications/{application}/activities', [ApplicationActivitiesController::class, 'store'])->whereNumber('application')->name('applications.activities.store');
@@ -159,6 +162,8 @@ $registerRoutes = function () {
         Route::patch('/holidays/{holiday}/cancel', [HolidaysController::class, 'cancel'])->name('holidays.cancel');
 
         Route::get('/configuration', [ConfigurationController::class, 'index'])->name('configuration');
+        Route::get('/configuration/privileges', [RolePrivilegesController::class, 'index'])->name('role-privileges');
+        Route::patch('/configuration/privileges/{role}', [RolePrivilegesController::class, 'update'])->name('role-privileges.update');
         Route::post('/configuration/migration-agents', [MigrationAgentConfigurationController::class, 'store'])->name('configuration.migration-agents.store');
         Route::patch('/configuration/migration-agents/{migrationAgent}', [MigrationAgentConfigurationController::class, 'update'])->name('configuration.migration-agents.update');
         Route::delete('/configuration/migration-agents/{migrationAgent}', [MigrationAgentConfigurationController::class, 'destroy'])->name('configuration.migration-agents.destroy');
@@ -167,6 +172,10 @@ $registerRoutes = function () {
         Route::patch('/configuration/nomination-subclasses/{nominationSubclass}', [NominationSubclassConfigurationController::class, 'update'])->name('configuration.nomination-subclasses.update');
         Route::delete('/configuration/nomination-subclasses/{nominationSubclass}', [NominationSubclassConfigurationController::class, 'destroy'])->name('configuration.nomination-subclasses.destroy');
         Route::patch('/configuration/application-types', [ApplicationTypeConfigurationController::class, 'update'])->name('configuration.application-types.update');
+        Route::post('/configuration/checkpoints', [CheckpointConfigurationController::class, 'store'])->name('configuration.checkpoints.store');
+        Route::patch('/configuration/checkpoints/{checkpoint}', [CheckpointConfigurationController::class, 'update'])->whereNumber('checkpoint')->name('configuration.checkpoints.update');
+        Route::delete('/configuration/checkpoints/{checkpoint}', [CheckpointConfigurationController::class, 'destroy'])->whereNumber('checkpoint')->name('configuration.checkpoints.destroy');
+        Route::patch('/configuration/workflow-checkpoints', [CheckpointConfigurationController::class, 'assign'])->name('configuration.workflow-checkpoints.update');
         Route::post('/configuration/event-marketing', [EventReferralConfigurationController::class, 'store'])->name('configuration.event-marketing.store');
         Route::patch('/configuration/event-marketing/{eventReferral}', [EventReferralConfigurationController::class, 'update'])->name('configuration.event-marketing.update');
         Route::post('/configuration/events', [EventConfigurationController::class, 'store'])->name('configuration.events.store');

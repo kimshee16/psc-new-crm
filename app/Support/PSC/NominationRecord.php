@@ -77,7 +77,7 @@ class NominationRecord
         return [
             'nomineeLocked' => $visa !== null,
             'selectedNominee' => is_scalar($reference) && filled($reference)
-                ? Client::query()->where('client_id', $reference)->first() : null,
+                ? Client::query()->visibleTo($user)->where('client_id', $reference)->first() : null,
             'sponsorships' => $sponsorships,
             'sbsRequiredSubclasses' => NominationSubclass::query()->where('sbs_required', true)->pluck('subclass')->all(),
             'hasActiveSbs' => $activeSbs !== null,
@@ -178,7 +178,7 @@ class NominationRecord
         $validated = $validator->validate();
         if (! $visa) {
             $validated['nominee_client_id'] = filled($data['nominee_client_reference'])
-                ? Client::query()->where('client_id', $data['nominee_client_reference'])->value('id') : null;
+                ? Client::query()->visibleTo($user)->where('client_id', $data['nominee_client_reference'])->firstOrFail()->id : null;
             unset($validated['nominee_client_reference']);
         } else {
             $validated += ['nominee_client_id' => $visa->client_id, 'nominee_name' => null, 'nomination_pathway' => $visa->visa_subclass];

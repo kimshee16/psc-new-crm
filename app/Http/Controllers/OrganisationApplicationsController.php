@@ -37,7 +37,7 @@ class OrganisationApplicationsController extends Controller
         Organisation::query()->visibleTo($request->user())->findOrFail($organisation);
         $data = $request->validate(['q' => ['required', 'string', 'max:255']]);
         $term = trim($data['q']);
-        $clients = Client::query()->where(function ($query) use ($term) {
+        $clients = Client::query()->visibleTo($request->user())->where(function ($query) use ($term) {
             $query->when(ctype_digit($term), fn ($ids) => $ids->where('client_id', $term))->orWhere(function ($names) use ($term) {
                 foreach (preg_split('/\s+/u', $term) as $word) {
                     $names->where(fn ($part) => $part->whereLike('first_name', '%'.$word.'%')
@@ -184,7 +184,7 @@ class OrganisationApplicationsController extends Controller
         }
         if (! $sbs && ($creating || array_key_exists('nominee_client_reference', $data))) {
             $data['nominee_client_id'] = filled($data['nominee_client_reference'] ?? null)
-                ? Client::query()->where('client_id', $data['nominee_client_reference'])->value('id') : null;
+                ? Client::query()->visibleTo($request->user())->where('client_id', $data['nominee_client_reference'])->firstOrFail()->id : null;
             unset($data['nominee_client_reference']);
         }
 

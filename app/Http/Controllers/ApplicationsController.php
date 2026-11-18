@@ -6,14 +6,17 @@ use App\Models\Application;
 use App\Models\ApplicationActivity;
 use App\Models\ApplicationTypeSetting;
 use App\Support\PSC\ApplicationLinks;
+use App\Support\PSC\ApplicationCheckpoints;
 use App\Support\PSC\ApplicationList;
 use App\Support\PSC\ApplicationSummary;
 use App\Support\PSC\CriticalDateFormatting;
+use App\Support\PSC\CrmAccess;
 use App\Support\PSC\NominationRecord;
 use App\Support\PSC\SbsRecord;
 use App\Support\PSC\VisaGrants;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -66,6 +69,15 @@ class ApplicationsController extends Controller
             ->findOrFail($application);
 
         $tabs = ApplicationTypeSetting::tabsFor($record->category, $record->sponsor_type);
+        $access = app(CrmAccess::class);
+        foreach (['tasks' => 'tasks', 'rfi' => 'rfis'] as $key => $module) {
+            if (! $access->allows($request->user(), $module)) {
+                unset($tabs[$key]);
+            }
+        }
+        if (! $access->notes($request->user(), 'applications')) {
+            unset($tabs['notes']);
+        }
         $requestedTab = $request->query('tab');
         $activeTab = is_string($requestedTab) && array_key_exists($requestedTab, $tabs)
             ? $requestedTab : array_key_first($tabs);
@@ -77,6 +89,7 @@ class ApplicationsController extends Controller
         return view($nomination ? 'crm.applications.nomination' : ($sbs ? 'crm.applications.sbs' : 'crm.applications.show'), [
             'title' => 'PSC CRM - Application '.$application,
             'application' => $record,
+            'checkpoints' => app(ApplicationCheckpoints::class)->forApplication($record),
             'applicationTabs' => $tabs,
             'activeApplicationTab' => $activeTab,
             'rfis' => $activeTab === 'rfi' ? $record->rfis()->with(['application', 'officer'])->latest('id')->paginate(10)->withQueryString() : null,
@@ -86,6 +99,16 @@ class ApplicationsController extends Controller
                 && $activeTab !== 'rfi' && isset(ApplicationActivity::TABS[$activeTab ?? ''])
                     ? $record->activities()->where('kind', $activeTab)->latest('id')->paginate(15)->withQueryString() : null,
         ] + $summary->viewData($record) + $nominationData);
+    }
+
+    public function updateCheckpoints(Request $request, int $application, ApplicationCheckpoints $checkpoints): RedirectResponse
+    {
+        DB::transaction(function () use ($request, $application, $checkpoints): void {
+            $record = Application::query()->assignedTo($request->user())->lockForUpdate()->findOrFail($application);
+            $checkpoints->save($record, $request->all());
+        });
+
+        return redirect()->route('applications.show', $application)->with('success', 'Application checkpoints saved.');
     }
 
     public function update(Request $request, int $application, ApplicationSummary $summary, VisaGrants $grants): RedirectResponse

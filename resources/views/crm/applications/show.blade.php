@@ -25,6 +25,9 @@
             @elseif ($application->category === 'ART Appeal')
                 <p class="mt-3 text-sm">Subclass: {{ $application->visa_subclass ?: 'Not set' }}</p>
             @endif
+            @if($checkpoints->isNotEmpty())
+                <x-applications.checkpoints-form :application="$application" :checkpoints="$checkpoints" />
+            @endif
         </section>
     </div>
     @if ($application->organisation_id && in_array($application->category, ['SBS', 'Nomination']))

@@ -13,6 +13,10 @@ class TaskList
 
     public function staff(User $user): Builder
     {
+        $access = app(CrmAccess::class);
+        if ($access->scope($user) !== 'existing') {
+            return $access->staffInScope($user);
+        }
         $query = User::query();
         if (in_array($user->account_type, ['Admin', 'Super Admin'], true)) {
             return $query;
@@ -32,7 +36,7 @@ class TaskList
     {
         $query = ApplicationActivity::query()->where('kind', 'tasks');
 
-        return in_array($user->account_type, ['Admin', 'Super Admin'], true)
+        return app(CrmAccess::class)->scope($user) === 'existing' && in_array($user->account_type, ['Admin', 'Super Admin'], true)
             ? $query : $query->whereIn('assigned_to_user_id', $this->staff($user)->select('id'));
     }
 

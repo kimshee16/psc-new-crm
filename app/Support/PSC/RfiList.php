@@ -19,7 +19,7 @@ class RfiList
     public function visible(User $user): Builder
     {
         return ApplicationRfi::query()->whereHas('application')->where(fn (Builder $query) => $query
-            ->where('assigned_to_user_id', $user->id)
+            ->whereIn('assigned_to_user_id', app(CrmAccess::class)->staffInScope($user)->select('users.id'))
             ->orWhereHas('application', fn (Builder $application) => $application->assignedTo($user)));
     }
 

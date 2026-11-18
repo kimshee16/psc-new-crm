@@ -380,6 +380,7 @@
             </div>
         </section>
 
+        @if(app(\App\Support\PSC\CrmAccess::class)->notes(auth()->user(), 'clients', write: true))
         <section class="mt-11">
             @php
                 $submittedNoteBodies = old('note_bodies');
@@ -455,6 +456,7 @@
                 No client notes yet.
             </div>
         </section>
+        @endif
     </form>
 
     <script>

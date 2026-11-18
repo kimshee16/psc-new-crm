@@ -10,6 +10,7 @@ use App\Models\Organisation;
 use App\Models\User;
 use App\Support\PSC\NominationCreation;
 use App\Support\PSC\OrganisationList;
+use App\Support\PSC\CrmAccess;
 use App\Support\PSC\RecordNotes;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,9 +37,12 @@ class OrganisationsController extends Controller
 
     public function searchShow(Request $request, Organisation $organisation): View
     {
+        $canOpen = Organisation::query()->visibleTo($request->user())->whereKey($organisation->id)->exists();
+        abort_unless($canOpen || app(CrmAccess::class)->scope($request->user()) === 'existing', 404);
+
         return view('crm.organisations.search-record', [
             'title' => 'PSC CRM - '.$organisation->name, 'organisation' => $organisation->load('contacts'),
-            'canOpenRecord' => Organisation::query()->visibleTo($request->user())->whereKey($organisation->id)->exists(),
+            'canOpenRecord' => $canOpen,
         ]);
     }
 
@@ -116,12 +120,24 @@ class OrganisationsController extends Controller
             $nomination->setRelation('linkedVisas', Application::query()->assignedTo($request->user())
                 ->linkedTo($nomination)->where('category', 'Visa')->orderBy('id')->get());
         }
+        $access = app(CrmAccess::class);
+        $user = $request->user();
+        $tabs = ApplicationActivity::ORGANISATION_TABS;
+        if (! $access->notes($user, 'organisations') || ! $access->notes($user, 'applications')) {
+            unset($tabs['notes']);
+        }
+        if (! $access->allows($user, 'tasks')) {
+            unset($tabs['tasks']);
+        }
         $requested = $request->query('tab');
-        $activeTab = is_string($requested) && isset(ApplicationActivity::ORGANISATION_TABS[$requested]) ? $requested : 'tasks';
+        if (! $access->allows($user, 'rfis')) {
+            unset($tabs['rfi']);
+        }
+        $activeTab = is_string($requested) && isset($tabs[$requested]) ? $requested : (isset($tabs['tasks']) ? 'tasks' : array_key_first($tabs));
         $activityQuery = ApplicationActivity::query()->whereHas('application', fn ($query) => $query
             ->where('organisation_id', $record->id)->whereIn('category', ['SBS', 'Nomination'])->assignedTo($request->user()));
         $sourceApplications = (clone $applications)->whereIn('category', ['SBS', 'Nomination'])->orderBy('id')->get();
-        $notes = $sourceApplications->flatMap(function (Application $application) {
+        $notes = !isset($tabs['notes']) ? collect() : $sourceApplications->flatMap(function (Application $application) {
             return collect(app(RecordNotes::class)->all($application->notes))->map(fn ($note) => [...$note, 'application' => $application]);
         })->sortByDesc('datetime')->values();
         $counts = (clone $activityQuery)->selectRaw('kind, count(*) as total')->groupBy('kind')->pluck('total', 'kind');
@@ -133,8 +149,8 @@ class OrganisationsController extends Controller
             'sponsors' => $sponsors, 'nominations' => $nominations,
             'nominationSubclasses' => app(NominationCreation::class)->subclasses(),
             'selectedNominee' => is_scalar(old('nominee_client_reference')) && old('_create_nomination') === '1'
-                ? Client::query()->where('client_id', old('nominee_client_reference'))->first() : null,
-            'tabs' => ApplicationActivity::ORGANISATION_TABS, 'activeTab' => $activeTab,
+                ? Client::query()->visibleTo($user)->where('client_id', old('nominee_client_reference'))->first() : null,
+            'tabs' => $tabs, 'activeTab' => $activeTab,
             'counts' => $counts, 'notes' => $notes,
             'taskApplications' => $sourceApplications->whereIn('category', $taskCategories->all()),
             'staff' => $activeTab === 'tasks' ? User::query()->where('is_active', true)

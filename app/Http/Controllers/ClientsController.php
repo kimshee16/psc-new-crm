@@ -9,6 +9,7 @@ use App\Models\Lead;
 use App\Models\Office;
 use App\Models\User;
 use App\Support\PSC\ApplicationCreation;
+use App\Support\PSC\CrmAccess;
 use App\Support\PSC\VisaGrants;
 use App\Support\PSC\WebsiteLeadReferences;
 use Illuminate\Http\RedirectResponse;
@@ -26,7 +27,9 @@ class ClientsController extends Controller
 {
     public function canManageNotes(Client $client, User $user): bool
     {
-        return $this->canManageClientNotes($user, $client->only([
+        return $this->clientInScope($user, $client->only([
+            'primary_counsellor', 'secondary_counsellor', 'migration_agent', 'admin_office', 'created_by_user_id',
+        ])) && $this->canManageClientNotes($user, $client->only([
             'primary_counsellor', 'secondary_counsellor', 'migration_agent',
         ]));
     }
@@ -183,7 +186,7 @@ class ClientsController extends Controller
         $client = $this->clientProfileFor($clientId, $request->user());
         $clientName = $this->displayName($client);
         $ownsLock = $this->ownsEditLock($request, $clientId);
-        $isEditing = $request->boolean('editing') && $ownsLock;
+        $isEditing = $request->boolean('editing') && $ownsLock && app(CrmAccess::class)->allows($request->user(), 'clients', 'edit');
 
         if ($isEditing) {
             $this->refreshEditLock($request, $clientId);
@@ -253,6 +256,9 @@ class ClientsController extends Controller
         }
 
         $user = $request->user();
+        if (app(CrmAccess::class)->scope($user) !== 'existing') {
+            $this->clientProfileFor($clientId, $user);
+        }
         $existing = $this->clientListRecordFor($clientId, $user);
         $validated = $request->validate($this->clientRecordRules($existing['nationality'] ?? null, $existing['current_visa'] ?? null), [], $this->clientRecordAttributes());
         $existingPhotoPath = (string) ($existing['passport_photo_path'] ?? '');
@@ -391,7 +397,8 @@ class ClientsController extends Controller
     {
         return array_values(array_filter(
             $this->clientsFor($user),
-            fn (array $client) => $this->isAssignedTo($client, $user)
+            fn (array $client) => app(CrmAccess::class)->scope($user) === 'existing'
+                ? $this->isAssignedTo($client, $user) : $this->clientInScope($user, $client)
         ));
     }
 
@@ -455,7 +462,20 @@ class ClientsController extends Controller
                 'email' => trim($emailFirst.'.'.$emailSurname, '.').'@example.test',
                 'event' => $this->eventFor($client),
             ];
-        }, $this->clientsFor($user));
+        }, array_values(array_filter($this->clientsFor($user), fn (array $client) => $this->clientInScope($user, $client))));
+    }
+
+    private function clientInScope(User $user, array $client): bool
+    {
+        $access = app(CrmAccess::class);
+        $scope = $access->scope($user);
+        if ($scope === 'existing' || ($client['created_by_user_id'] ?? null) === $user->id || $this->isAssignedTo($client, $user)) {
+            return true;
+        }
+        if ($scope === 'assigned') {
+            return false;
+        }
+        return in_array($client['admin_office'] ?? null, $access->officeNamesAndCodes($user), true);
     }
 
     private function isAssignedTo(array $client, User $user): bool
@@ -592,7 +612,8 @@ class ClientsController extends Controller
      */
     private function clientProfileFor(string $clientId, User $user): array
     {
-        if ($clientId === '152' && ! Client::where('client_id', 152)->exists()) {
+        $usesExistingScope = app(CrmAccess::class)->scope($user) === 'existing';
+        if ($usesExistingScope && $clientId === '152' && ! Client::where('client_id', 152)->exists()) {
             return [
                 'client_id' => 152,
                 'first_name' => 'Rika',
@@ -634,6 +655,7 @@ class ClientsController extends Controller
             ->first(fn (array $client): bool => (string) $client['client_id'] === $clientId);
 
         if (! $client) {
+            abort_unless($usesExistingScope, 404);
             $client = [
                 'client_id' => $clientId,
                 'first_name' => 'Client',
@@ -939,7 +961,11 @@ class ClientsController extends Controller
      */
     private function activeLeadRowsForClientId(int $clientId): array
     {
-        $leads = Lead::query()
+        $user = auth()->user();
+        $access = app(CrmAccess::class);
+        $leadQuery = $access->scope($user) === 'existing' && $access->allows($user, 'leads')
+            ? Lead::query() : app(LeadsController::class)->visibleLeadQuery($user);
+        $leads = $leadQuery
             ->where('client_id', $clientId)
             ->whereNotIn('status', ['Converted', 'Withdrawn'])
             ->orderByDesc('updated_at')

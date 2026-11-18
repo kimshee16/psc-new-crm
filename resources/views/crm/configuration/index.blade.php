@@ -23,6 +23,18 @@
                 'count' => count($applicationTypes),
             ],
             [
+                'id' => 'checkpoints',
+                'label' => 'Checkpoints',
+                'description' => 'Reusable checkpoints and their status options.',
+                'count' => $checkpoints->count(),
+            ],
+            [
+                'id' => 'workflow-checkpoints',
+                'label' => 'Workflow Checkpoints',
+                'description' => 'Choose the checkpoints and their order for each workflow.',
+                'count' => count($applicationTypes) + $applicationWorkflows->count(),
+            ],
+            [
                 'id' => 'event-marketing',
                 'label' => 'Event Referral',
                 'description' => 'Referral options used by event registration forms.',
@@ -220,6 +232,10 @@
         <div class="configuration-content min-w-0 flex-1">
             @if ($activeConfigurationTab === 'application-types')
                 @include('crm.configuration.application-types')
+            @elseif ($activeConfigurationTab === 'checkpoints')
+                @include('crm.configuration.checkpoints')
+            @elseif ($activeConfigurationTab === 'workflow-checkpoints')
+                @include('crm.configuration.workflow-checkpoints')
             @elseif ($activeConfigurationTab === 'nomination-subclasses')
                 @include('crm.configuration.nomination-subclasses')
             @elseif ($activeConfigurationTab === 'migration-agents')

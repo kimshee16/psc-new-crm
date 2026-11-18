@@ -62,6 +62,10 @@
                         @foreach(\App\Support\PSC\SbsRecord::MILESTONES as $field => $options)
                             <x-applications.summary-select :name="$field" :label="['initial_consultation' => 'Initial consultation', 'service_agreement' => 'Service agreement', 'supporting_documents' => 'Supporting documents', 'application_stage' => 'Application'][$field]" :options="array_combine($options, $options)" :value="$application->$field ?? 'To do'" />
                         @endforeach
+                        @if($checkpoints->isNotEmpty())
+                            <x-applications.checkpoint-options :application="$application" :checkpoints="$checkpoints" form="application-checkpoints-form" />
+                            <button form="application-checkpoints-form" class="my-2 text-sm font-semibold text-[#1f7890] underline">Save checkpoints</button>
+                        @endif
                         <x-applications.nomination-field :application="$application" name="lodgement_date" label="Lodgement date" type="date" />
                         @unless($application->is_labour_agreement)
                             <x-applications.nomination-field :application="$application" name="trn" label="TRN" pattern="[A-Za-z0-9]{13}" aria-describedby="sbs-trn-help" />
@@ -88,6 +92,9 @@
         </div>
         <div class="mt-4 flex justify-end"><button class="rounded-md bg-[#15638e] px-5 py-2 text-sm font-semibold text-white">Save changes</button></div>
     </form>
+    @if($checkpoints->isNotEmpty())
+        <x-applications.checkpoints-form :application="$application" :checkpoints="$checkpoints" embedded />
+    @endif
     <x-applications.tabs :application="$application" :tabs="$applicationTabs" :active-tab="$activeApplicationTab" :activities="$activities" :nominations="$nominations" :rfis="$rfis" />
     @if ($activeApplicationTab !== 'notes')
         <x-related-record-notes :record="$application" module="applications" :record-id="$application->id" />

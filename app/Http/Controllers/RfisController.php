@@ -172,7 +172,9 @@ class RfisController extends Controller
     {
         $query = $this->list->filtered($request->user(), $this->filters($request));
 
-        return response()->streamDownload(function () use ($query) {
+        $showNotes = app(\App\Support\PSC\CrmAccess::class)->notes($request->user(), 'rfis');
+
+        return response()->streamDownload(function () use ($query, $showNotes) {
             $handle = fopen('php://output', 'w');
             fwrite($handle, "\xEF\xBB\xBF");
             fputcsv($handle, array_values(RfiList::COLUMNS), ',', '"', '');
@@ -180,7 +182,7 @@ class RfisController extends Controller
                 $values = [str_pad((string) $rfi->application_id, 5, '0', STR_PAD_LEFT), $rfi->request_label,
                     $rfi->received_date?->format('d/m/Y'), $rfi->due_date?->format('d/m/Y'), $rfi->status,
                     $rfi->officer?->name, $rfi->request_letter_name, $rfi->lodged_date?->format('d/m/Y'),
-                    $rfi->proof_of_lodgement_name, $rfi->notes];
+                    $rfi->proof_of_lodgement_name, $showNotes ? $rfi->notes : null];
                 $values = array_map(function ($value) {
                     $value = (string) ($value ?? '');
 

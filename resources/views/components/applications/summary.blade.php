@@ -1,5 +1,6 @@
 @props(['application', 'staff', 'typeField' => null, 'typeOptions' => []])
 @php
+    $canEditApplication = app(\App\Support\PSC\CrmAccess::class)->allows(auth()->user(), 'applications', 'edit');
     $criticalDateValue = old('critical_date', $application->critical_date?->format('Y-m-d'));
     $criticalDateValue = is_string($criticalDateValue) ? $criticalDateValue : '';
 @endphp
@@ -21,6 +22,7 @@
     <form id="application-summary-form" method="POST" action="{{ route('applications.update', $application->id) }}" class="px-6 pb-5 pt-3">
         @csrf
         @method('PATCH')
+        <fieldset @disabled(!$canEditApplication)>
         @if ($errors->any())
             <div role="alert" class="mb-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
                 <p class="font-semibold">The summary could not be saved.</p>
@@ -72,12 +74,15 @@
                 <div class="application-summary-row"><dt>Last Modified</dt><dd><time datetime="{{ $application->updated_at?->toIso8601String() }}">{{ $application->updated_at?->format('d/m/Y H:i:s T') }}</time></dd></div>
             @endif
         </dl>
+        @if($canEditApplication)
         <footer class="mt-5 flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
             <a href="{{ route('applications.show', $application->id) }}" class="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-600">Cancel</a>
             <button type="submit" class="rounded-md bg-[#1f7890] px-4 py-2 text-sm font-semibold text-white hover:bg-[#17657a]">Save summary</button>
         </footer>
+        @endif
+        </fieldset>
     </form>
 </section>
-@if ($application->category === 'Visa')
+@if ($application->category === 'Visa' && $canEditApplication)
     <x-applications.visa-grant-dialog :application="$application" />
 @endif

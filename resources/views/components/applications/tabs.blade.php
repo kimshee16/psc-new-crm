@@ -1,4 +1,5 @@
 @props(['application', 'tabs', 'activeTab', 'activities' => null, 'nominations' => null, 'rfis' => null])
+@php($access = app(\App\Support\PSC\CrmAccess::class))
 
 <section id="application-tabs" class="mt-6 min-w-0 scroll-mt-20 rounded-lg border border-slate-200 bg-white shadow-sm" aria-label="Application details">
     @if ($tabs)
@@ -17,14 +18,16 @@
             @elseif ($activeTab === 'nominations' && $nominations !== null)
                 @include('crm.applications.sbs-nominations')
             @elseif ($activeTab === 'rfi' && $rfis !== null)
-                <div class="mt-4 flex justify-end"><a href="{{ route('applications.rfis.create', $application) }}" class="rounded-md bg-[#1f7890] px-4 py-2 text-sm font-semibold text-white">+ Add RFI</a></div>
+                @if($access->allows(auth()->user(), 'rfis', 'create'))<div class="mt-4 flex justify-end"><a href="{{ route('applications.rfis.create', $application) }}" class="rounded-md bg-[#1f7890] px-4 py-2 text-sm font-semibold text-white">+ Add RFI</a></div>@endif
                 @include('crm.rfis.styles')
                 <x-rfis.table :rfis="$rfis" return-to="application" />
                 <div class="mt-4">{{ $rfis->links() }}</div>
                 <x-rfis.notes-dialogs :rfis="$rfis" return-to="application" />
             @elseif ($activities !== null)
                 <x-applications.activity-records :activities="$activities" :kind="$activeTab" />
-                @include('crm.organisations.activity-form', ['application' => $application, 'kind' => $activeTab])
+                @if($activeTab === 'tasks' ? $access->allows(auth()->user(), 'tasks', 'create') : $access->allows(auth()->user(), 'applications', 'edit'))
+                    @include('crm.organisations.activity-form', ['application' => $application, 'kind' => $activeTab])
+                @endif
             @else
                 <p class="mt-3 text-sm text-slate-600">{{ $tabs[$activeTab] }} content is work in progress.</p>
             @endif

@@ -111,6 +111,10 @@
                         <x-applications.nomination-field :application="$application" name="anzsco_code" label="ANZSCO code" inputmode="numeric" pattern="[0-9]{6}" placeholder="6-digit code" />
                         <x-applications.nomination-field :application="$application" name="annual_salary" label="Annual salary (AUD)" type="number" min="0" max="9999999999.99" step="0.01" />
                     </div>
+                    @if($checkpoints->isNotEmpty())
+                        <x-applications.checkpoint-options :application="$application" :checkpoints="$checkpoints" form="application-checkpoints-form" />
+                        <button form="application-checkpoints-form" class="my-2 text-sm font-semibold text-[#1f7890] underline">Save checkpoints</button>
+                    @endif
                     <div class="py-3">
                         <x-applications.nomination-field :application="$application" name="lodgement_date" label="Lodgement date" type="date" />
                         <x-applications.nomination-field :application="$application" name="reference_number" label="Reference number" />
@@ -134,6 +138,9 @@
         </div>
         <div class="mt-4 flex justify-end"><button class="rounded-md bg-[#15638e] px-5 py-2 text-sm font-semibold text-white">Save changes</button></div>
     </form>
+    @if($checkpoints->isNotEmpty())
+        <x-applications.checkpoints-form :application="$application" :checkpoints="$checkpoints" embedded />
+    @endif
     <x-applications.linked-items :application="$application" :items="$linkedItems" />
     <x-applications.tabs :application="$application" :tabs="$applicationTabs" :active-tab="$activeApplicationTab" :activities="$activities" :rfis="$rfis" />
     @if ($activeApplicationTab !== 'notes')

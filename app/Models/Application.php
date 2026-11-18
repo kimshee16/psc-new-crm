@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PSC\CrmAccess;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -65,7 +66,8 @@ class Application extends Model
         return ['critical_date' => 'date:Y-m-d', 'psc_client' => 'boolean',
             'approval_date' => 'date:Y-m-d', 'expiry_date' => 'date:Y-m-d',
             'lodgement_date' => 'date:Y-m-d', 'outcome_date' => 'date:Y-m-d',
-            'appeal_deadline' => 'date:Y-m-d', 'final_outcome_date' => 'date:Y-m-d', 'annual_salary' => 'decimal:2'];
+            'appeal_deadline' => 'date:Y-m-d', 'final_outcome_date' => 'date:Y-m-d', 'annual_salary' => 'decimal:2',
+            'checkpoint_statuses' => 'array'];
     }
 
     public function nomineeClient(): BelongsTo
@@ -164,10 +166,23 @@ class Application extends Model
 
     public function scopeAssignedTo(Builder $query, User $user): void
     {
-        $query->where(fn (Builder $assigned) => $assigned
-            ->where('applications.primary_counsellor_id', $user->id)
-            ->orWhere('applications.secondary_counsellor_id', $user->id)
-            ->orWhere('applications.migration_agent_id', $user->id));
+        $access = app(CrmAccess::class);
+        if (! $access->allows($user, 'applications')) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+        $query->where(function (Builder $assigned) use ($user, $access): void {
+            if (in_array($access->scope($user), ['office', 'region'], true)) {
+                foreach (['primary_counsellor_id', 'secondary_counsellor_id', 'migration_agent_id'] as $field) {
+                    $assigned->orWhereIn('applications.'.$field, $access->staffInScope($user)->select('users.id'));
+                }
+            } else {
+                $assigned->where('applications.primary_counsellor_id', $user->id)
+                    ->orWhere('applications.secondary_counsellor_id', $user->id)
+                    ->orWhere('applications.migration_agent_id', $user->id);
+            }
+        });
     }
 
     public function scopeActive(Builder $query): void

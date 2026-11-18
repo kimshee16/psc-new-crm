@@ -3,10 +3,14 @@
     $notesService = app(\App\Support\PSC\RecordNotes::class);
     $owner = $notesService->owner($record);
     $sharedClient = ! $owner->is($record);
+    $canReadShared = !$sharedClient || (app(\App\Support\PSC\CrmAccess::class)->notes(auth()->user(), 'clients')
+        && $owner->newQuery()->visibleTo(auth()->user())->whereKey($owner->id)->exists());
     $editable = ! ($owner instanceof \App\Models\Client)
         || app(\App\Http\Controllers\ClientsController::class)->canManageNotes($owner, auth()->user());
 @endphp
-<x-record-notes :stored="$owner->notes" :module="$module" :record-id="$recordId" :editable="$editable" :shared-client="$sharedClient" />
+@if($canReadShared)
+    <x-record-notes :stored="$owner->notes" :module="$module" :record-id="$recordId" :editable="$editable" :shared-client="$sharedClient" />
+@endif
 @if ($sharedClient && $notesService->all($record->notes) !== [])
     <details class="mt-6 rounded-md border border-slate-200 bg-white p-4">
         <summary class="cursor-pointer text-sm font-semibold">Earlier {{ $module === 'leads' ? 'Lead' : 'Application' }} Notes</summary>

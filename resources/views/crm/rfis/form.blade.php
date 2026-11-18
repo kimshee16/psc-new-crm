@@ -25,7 +25,7 @@
                 <label>Proof of lodgement<input type="file" name="proof_of_lodgement" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" @error('proof_of_lodgement') aria-invalid="true" @enderror>@if($rfi->proof_of_lodgement_path)<a href="{{ route('rfis.document', ['rfi' => $rfi, 'document' => 'proof_of_lodgement']) }}" target="_blank" rel="noopener" class="mt-2 block text-sm font-normal text-[#1f7890] underline">View current proof of lodgement</a>@endif<x-rfis.field-error name="proof_of_lodgement" /></label>
             </div>
             <p class="text-xs text-slate-500">Upload PDF, JPG, PNG or Word documents, up to 10 MB each. @if($rfi->exists)Existing documents are retained unless you upload replacements.@endif</p>
-            @unless($rfi->exists)<label>Notes<textarea name="notes" rows="5" maxlength="10000">{{ $draft('notes') }}</textarea><x-rfis.field-error name="notes" /></label>@endunless
+            @if(!$rfi->exists && app(\App\Support\PSC\CrmAccess::class)->notes(auth()->user(), 'rfis', write: true))<label>Notes<textarea name="notes" rows="5" maxlength="10000">{{ $draft('notes') }}</textarea><x-rfis.field-error name="notes" /></label>@endif
             <div class="flex justify-end gap-3 border-t border-slate-200 pt-5"><a href="{{ $back }}" class="rounded-md border border-slate-300 px-5 py-2">Cancel</a><button class="rounded-md bg-[#1f7890] px-5 py-2 font-semibold text-white">Save RFI</button></div>
         </form>
         @if($rfi->exists && in_array(auth()->user()->account_type, ['Admin', 'Super Admin'], true))

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Support\PSC\CrmAccess;
 use App\Support\PSC\WebsiteLeadReferences;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,14 @@ class MyOfficesController extends Controller
     {
         $this->authorizeAccess($request->user());
 
-        return redirect()->route('my-offices.clients');
+        $access = app(CrmAccess::class);
+        foreach (['clients', 'applications', 'leads', 'tasks', 'rfi'] as $section) {
+            if ($access->allows($request->user(), $section === 'rfi' ? 'rfis' : $section)) {
+                return redirect()->route('my-offices.'.$section);
+            }
+        }
+
+        return redirect()->route('home');
     }
 
     public function clients(Request $request): View
@@ -84,6 +92,10 @@ class MyOfficesController extends Controller
      */
     private function availableOfficesFor(User $user): array
     {
+        $access = app(CrmAccess::class);
+        if ($access->scope($user) !== 'existing') {
+            return $access->scope($user) === 'assigned' ? [] : array_intersect_key($this->offices, array_flip($access->offices($user)));
+        }
         $assigned = array_intersect_key($this->offices, array_flip($user->accessibleOfficeCodes()));
 
         if ($assigned !== []) {

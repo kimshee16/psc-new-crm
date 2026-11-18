@@ -2,11 +2,32 @@
 
 namespace App\Models;
 
+use App\Support\PSC\CrmAccess;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Client extends Model
 {
+    public function scopeVisibleTo(Builder $query, User $user): void
+    {
+        $access = app(CrmAccess::class);
+        if (! $access->allows($user, 'clients')) {
+            $query->whereRaw('1 = 0');
+        } elseif ($access->scope($user) !== 'existing') {
+            $assignee = trim($user->name) !== '' ? $user->name : $user->email;
+            $query->where(function (Builder $scope) use ($user, $access, $assignee): void {
+                $scope->where('created_by_user_id', $user->id)
+                    ->orWhere('primary_counsellor', $assignee)
+                    ->orWhere('secondary_counsellor', $assignee)
+                    ->orWhere('migration_agent', $assignee);
+                if ($access->scope($user) !== 'assigned') {
+                    $scope->orWhereIn('admin_office', $access->officeNamesAndCodes($user));
+                }
+            });
+        }
+    }
+
     /**
      * @var list<string>
      */

@@ -42,12 +42,13 @@ class RecordNotesTest extends TestCase
         $this->actingAs($user);
         foreach ($records as $url => $record) {
             $record->refresh();
-            $record->update(['notes' => "Legacy first line\n\nLegacy second paragraph"]);
-            $version = hash('sha256', $record->notes);
+            $owner = app(RecordNotes::class)->owner($record);
+            $owner->update(['notes' => "Legacy first line\n\nLegacy second paragraph"]);
+            $version = hash('sha256', $owner->notes);
             $this->postJson($url, ['version' => $version, 'body' => "Newest\n<script>alert(1)</script>",
                 'author' => 'Impersonated author', 'datetime' => '2000-01-01', 'status' => 'Finalised'])
                 ->assertOk()->assertJsonPath('html', fn ($html) => str_contains($html, '&lt;script&gt;') && ! str_contains($html, '<script>alert(1)</script>'));
-            $saved = app(RecordNotes::class)->all($record->fresh()->notes);
+            $saved = app(RecordNotes::class)->all($owner->fresh()->notes);
             $this->assertCount(2, $saved);
             $this->assertSame($user->name, $saved[0]['author']);
             $this->assertSame($user->id, $saved[0]['user_id']);
@@ -56,14 +57,14 @@ class RecordNotesTest extends TestCase
             $this->assertSame($record->status, $record->fresh()->status);
             $originalTime = $saved[0]['datetime'];
             $this->patchJson($url.'/'.$saved[0]['id'], [
-                'version' => hash('sha256', $record->fresh()->notes), 'body' => "Edited\nMultiline",
+                'version' => hash('sha256', $owner->fresh()->notes), 'body' => "Edited\nMultiline",
             ])->assertOk();
-            $edited = app(RecordNotes::class)->all($record->fresh()->notes);
+            $edited = app(RecordNotes::class)->all($owner->fresh()->notes);
             $this->assertSame($originalTime, $edited[0]['datetime']);
             $this->assertSame($user->name, $edited[0]['edited_by']);
             $this->assertSame("Edited\nMultiline", $edited[0]['body']);
-            $this->deleteJson($url.'/'.$saved[0]['id'], ['version' => hash('sha256', $record->fresh()->notes)])->assertOk();
-            $this->assertCount(1, app(RecordNotes::class)->all($record->fresh()->notes));
+            $this->deleteJson($url.'/'.$saved[0]['id'], ['version' => hash('sha256', $owner->fresh()->notes)])->assertOk();
+            $this->assertCount(1, app(RecordNotes::class)->all($owner->fresh()->notes));
         }
     }
 
@@ -90,14 +91,16 @@ class RecordNotesTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
         foreach ($this->records($user) as $url => $record) {
+            $owner = app(RecordNotes::class)->owner($record);
+            $owner->update(['notes' => null]);
             $version = hash('sha256', '');
             $this->postJson($url, ['version' => $version, 'body' => 'Saved'])->assertOk();
             $this->postJson($url, ['version' => $version, 'body' => 'Stale draft'])->assertConflict();
-            $currentVersion = hash('sha256', $record->fresh()->notes);
+            $currentVersion = hash('sha256', $owner->fresh()->notes);
             $this->postJson($url, ['version' => $currentVersion, 'body' => " \n "])->assertUnprocessable();
             $this->postJson($url, ['version' => $currentVersion, 'body' => str_repeat('a', 10001)])->assertUnprocessable();
             $this->patchJson($url.'/not-a-note', ['version' => $currentVersion, 'body' => 'Unknown'])->assertNotFound();
-            $this->assertCount(1, app(RecordNotes::class)->all($record->fresh()->notes));
+            $this->assertCount(1, app(RecordNotes::class)->all($owner->fresh()->notes));
         }
     }
 
@@ -122,12 +125,15 @@ class RecordNotesTest extends TestCase
         $user = User::factory()->create();
         $records = $this->records($user);
         $application = end($records);
+        $owner = app(RecordNotes::class)->owner($application);
         $this->actingAs($user)->postJson('/applications/'.$application->id.'/notes', ['version' => hash('sha256', ''), 'body' => 'Keep this note'])->assertOk();
-        $stored = $application->fresh()->notes;
+        $stored = $owner->fresh()->notes;
+        $this->assertNotEmpty($stored);
         $this->patch('/applications/'.$application->id, [
             'status' => 'In Progress', 'priority' => 'H', 'primary_counsellor_id' => $user->id,
             'notes' => 'Stale full-record form value',
         ])->assertSessionHasNoErrors();
-        $this->assertSame($stored, $application->fresh()->notes);
+        $this->assertSame($stored, $owner->fresh()->notes);
+        $this->assertNull($application->fresh()->notes);
     }
 }
