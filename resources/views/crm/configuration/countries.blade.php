@@ -64,7 +64,7 @@
                             <td class="px-5 py-4">{{ $country->name }}</td>
                             <td class="px-5 py-4">{{ $country->active ? 'Active' : 'Inactive' }}</td>
                             <td class="px-5 py-4">
-                                <div class="flex justify-end gap-2">
+                                <div class="config-row-actions">
                                     <a href="{{ route('configuration', ['tab' => 'countries', 'edit' => $country->id]) }}" class="config-action config-primary" aria-label="Edit {{ $country->name }}">Edit</a>
                                     <form method="POST" action="{{ route('configuration.countries.destroy', $country) }}" onsubmit="return confirm('Remove this country option? Countries in use must be deactivated instead.')">
                                         @csrf

@@ -14,10 +14,8 @@
     .region-office-options { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 10; max-height: 240px; overflow-y: auto; padding: 6px; border: 1px solid #c2bfe5; border-radius: 6px; background: white; box-shadow: 0 6px 18px #10182018; }
     .region-office-options label { display: flex; gap: 8px; align-items: center; padding: 8px; cursor: pointer; }
     .region-office-options label:hover { background: #f6f5ff; }
-    .region-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
-    .region-table th { background: #f8f8ff; font-weight: 600; }
-    .region-table th, .region-table td { padding: 10px 12px; border: 1px solid #e2e2ee; vertical-align: top; }
-    .region-table td { height: 51px; }
+    .region-table { font-size: 13px; }
+    .region-table tr { border-bottom: 1px solid #e2e8f0; }
     .region-table th a { display: inline-flex; align-items: center; gap: 8px; }
     .region-table th span { color: #8582a5; }
     .region-table td:last-child a { display: block; }
@@ -86,7 +84,7 @@
         <h2 class="text-base font-bold">Regions</h2>
         <a class="region-button" href="{{ route('configuration', ['tab' => 'regions', 'action' => 'create']) }}">Add Region</a>
     </div>
-    <div class="overflow-x-auto bg-white">
+    <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table class="region-table">
             <thead>
                 <tr>

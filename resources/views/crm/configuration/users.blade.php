@@ -16,10 +16,10 @@
     .users-radios label { display: inline-flex; align-items: center; gap: 7px; }
     .users-panel input[type=radio], .users-panel input[type=checkbox] { accent-color: #6451ff; }
     .users-footer { padding: 14px 12px 24px; border-top: 1px solid #e2e1ed; }
-    .users-table { width: 100%; min-width: 1280px; font-size: 12px; text-align: left; border-collapse: collapse; }
-    .users-table th { background: #f8f9ff; font-weight: 600; white-space: nowrap; }
-    .users-table th, .users-table td { border: 1px solid #eeedf4; padding: 9px 8px; vertical-align: top; }
-    .users-table tr.is-dirty td { background: #f0edff; }
+    .users-table { min-width: 1280px; font-size: 12px; }
+    .users-table th { white-space: nowrap; }
+    .users-table tr { border-bottom: 1px solid #e2e8f0; }
+    .users-table tr.is-dirty > td:first-child { box-shadow: inset 3px 0 #6451ff; }
     .users-table select { width: 100%; min-width: 85px; max-width: 150px; padding: 2px; border: 1px solid transparent; background: transparent; font-size: 12px; }
     .users-table select:hover, .users-table select:focus { border-color: #c9c6e5; background: white; }
     .users-table .users-name { display: block; min-width: 135px; }

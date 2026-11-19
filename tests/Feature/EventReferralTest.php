@@ -85,6 +85,34 @@ class EventReferralTest extends TestCase
         $this->assertSame('Friend', $option->fresh()->name);
     }
 
+    public function test_referral_positions_cannot_be_shared_by_two_options(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $whatsApp = EventReferral::where('name', 'WhatsApp')->firstOrFail();
+        $data = ['name' => 'Partner referral', 'sort_order' => 2, 'active' => true];
+
+        $this->post('/configuration/event-marketing', $data)->assertSessionHasErrors('sort_order');
+        $this->patch('/configuration/event-marketing/'.$whatsApp->id, $data)->assertSessionHasErrors('sort_order');
+        $this->assertSame(1, $whatsApp->fresh()->sort_order);
+        $this->assertDatabaseMissing('event_referrals', ['name' => 'Partner referral']);
+
+        $this->patch('/configuration/event-marketing/'.$whatsApp->id, array_replace($data, ['sort_order' => 1]))
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('event_referrals', ['id' => $whatsApp->id, 'name' => 'Partner referral', 'sort_order' => 1]);
+    }
+
+    public function test_duplicate_referral_positions_are_resolved_in_existing_display_order(): void
+    {
+        EventReferral::where('name', 'Instagram')->update(['sort_order' => 1, 'active' => false]);
+        $before = EventReferral::orderBy('sort_order')->orderBy('name')->pluck('id')->all();
+        $migration = require database_path('migrations/2026_11_19_000001_resolve_duplicate_event_referral_positions.php');
+        $migration->up();
+
+        $this->assertSame($before, EventReferral::orderBy('sort_order')->pluck('id')->all());
+        $this->assertSame(range(1, count($before)), EventReferral::orderBy('sort_order')->pluck('sort_order')->all());
+        $this->assertFalse(EventReferral::where('name', 'Instagram')->sole()->active);
+    }
+
     public function test_registration_requires_a_current_active_option_and_preserves_input_on_error(): void
     {
         $event = $this->event();

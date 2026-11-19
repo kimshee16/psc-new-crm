@@ -20,14 +20,14 @@
     </form>
     <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table class="text-left text-sm">
-            <thead class="bg-slate-50"><tr><th scope="col">Checkpoint</th><th scope="col">Statuses</th><th scope="col">Actions</th></tr></thead>
+            <thead><tr><th scope="col">Checkpoint</th><th scope="col">Statuses</th><th scope="col" class="text-right">Actions</th></tr></thead>
             <tbody class="divide-y divide-slate-200">
                 @forelse($checkpoints as $checkpoint)
                     <tr>
                         <th scope="row">{{ $checkpoint->name }}</th>
                         <td><ul>@foreach($checkpoint->statuses as $status)<li>{{ $status }}</li>@endforeach</ul></td>
                         <td>
-                            <div class="flex gap-2">
+                            <div class="config-row-actions">
                                 <a class="config-action config-primary" aria-label="Edit {{ $checkpoint->name }}" href="{{ route('configuration', ['tab' => 'checkpoints', 'edit' => $checkpoint->id]) }}">Edit</a>
                                 <form method="POST" action="{{ route('configuration.checkpoints.destroy', $checkpoint) }}" onsubmit="return confirm('Remove this checkpoint from all workflows? Saved application progress will be retained.')">
                                     @csrf

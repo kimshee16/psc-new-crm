@@ -18,7 +18,7 @@
             <input type="hidden" name="category" value="{{ $category }}">
         @endif
         <fieldset class="disabled:opacity-60">
-            <ol class="mb-3 space-y-2" aria-label="Checkpoint order">
+            <ol class="mb-3 list-decimal space-y-1 pl-8" aria-label="Checkpoint order">
                 @foreach($selectedIds as $id)
                     @if(is_scalar($id) && $lookup->has($id))
                         @include('crm.configuration.workflow-checkpoint-item', ['checkpoint' => $lookup->get($id)])

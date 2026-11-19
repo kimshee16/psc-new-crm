@@ -70,7 +70,7 @@
                     <td><span class="font-semibold">{{ $agent->name }}</span>@if($agent->user)<span class="mt-1 block text-xs text-slate-500">CRM user: {{ $agent->user->name }}</span>@endif</td>
                     <td><img src="{{ route('configuration.migration-agents.signature', $agent) }}" alt="Signature of {{ $agent->name }}" class="h-12 w-36 rounded bg-white object-contain" loading="lazy"></td>
                     <td>{{ $agent->registration_number }}</td><td>{{ $agent->email ?: '—' }}</td>
-                    <td><div class="flex justify-end gap-2"><a href="{{ route('configuration', ['tab' => 'migration-agents', 'edit' => $agent->id]) }}" class="config-action config-primary" aria-label="Edit {{ $agent->name }}">Edit</a>
+                    <td><div class="config-row-actions"><a href="{{ route('configuration', ['tab' => 'migration-agents', 'edit' => $agent->id]) }}" class="config-action config-primary" aria-label="Edit {{ $agent->name }}">Edit</a>
                         <form method="POST" action="{{ route('configuration.migration-agents.destroy', $agent) }}" onsubmit="return confirm('Remove this migration agent and their signature image?')">@csrf @method('DELETE')<button type="submit" class="config-action config-danger" aria-label="Remove {{ $agent->name }}">Remove</button></form>
                     </div></td>
                 </tr>@empty<tr><td colspan="5" class="py-10 text-center text-slate-500">No migration agents configured. Add an agent to get started.</td></tr>@endforelse

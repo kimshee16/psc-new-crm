@@ -6,7 +6,9 @@ use App\Models\EventReferral;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class EventReferralConfigurationController extends Controller
 {
@@ -28,9 +30,19 @@ class EventReferralConfigurationController extends Controller
             'name' => ['required', 'string', 'max:160', Rule::unique('event_referrals', 'name')->ignore($eventReferral)],
             'sort_order' => ['required', 'integer', 'min:1', 'max:999'],
             'active' => ['required', 'boolean'],
-        ], [], ['name' => 'event referral option', 'sort_order' => 'sort order']);
+        ], [], ['name' => 'event referral option', 'sort_order' => 'position']);
 
-        $eventReferral->fill($validated)->save();
+        DB::transaction(function () use ($eventReferral, $validated) {
+            $options = EventReferral::query()->orderBy('id')->lockForUpdate()->get();
+            $option = $eventReferral->exists ? $options->find($eventReferral->id) : new EventReferral;
+            abort_unless($option, 404);
+
+            if ($options->contains(fn (EventReferral $other) => $other->isNot($option) && $other->sort_order === (int) $validated['sort_order'])) {
+                throw ValidationException::withMessages(['sort_order' => 'That position is already in use. Choose an unused position.']);
+            }
+
+            $option->fill($validated)->save();
+        }, 5);
 
         return redirect()->route('configuration', ['tab' => 'event-marketing'])
             ->with('success', 'Event referral option was saved.');

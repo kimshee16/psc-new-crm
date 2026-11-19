@@ -83,7 +83,7 @@
                             <td class="px-5 py-4">{{ $redirection->office_code }} - {{ $offices[$redirection->office_code] ?? 'Unavailable office' }}</td>
                             <td class="px-5 py-4">{{ $redirection->active ? 'Active' : 'Inactive' }}</td>
                             <td class="px-5 py-4">
-                                <div class="flex justify-end gap-2">
+                                <div class="config-row-actions">
                                     <a href="{{ route('configuration', ['tab' => 'redirections', 'edit' => $redirection->id]) }}" class="config-action config-primary" aria-label="Edit redirection for {{ $redirection->nationality }} in {{ $redirection->current_location }}">Edit</a>
                                     <form method="POST" action="{{ route('configuration.redirections.destroy', $redirection) }}" onsubmit="return confirm('Remove this redirection? Future leads will use default-location routing unless another rule matches.')">
                                         @csrf

@@ -93,22 +93,29 @@
     @endphp
 
     <style>
-        .configuration-layout { display: flex; flex-wrap: nowrap; gap: 20px; align-items: flex-start; width: 100%; }
-        .configuration-navigation { flex: 0 0 240px; width: 240px; }
-        .configuration-content { flex: 1 1 0%; min-width: 0; }
-        .configuration-navigation a { display: block; border-left: 3px solid transparent; }
+        .configuration-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 20px; align-items: start; }
+        .configuration-navigation a { border-left: 3px solid transparent; }
         .configuration-navigation a[aria-current="page"] { border-left-color: #1f7890; background: #eaf7fc; color: #123348; }
-        @media (max-width: 1000px) {
-            .configuration-layout { gap: 16px; }
-            .configuration-navigation { flex-basis: 190px; width: 190px; }
+        @media (max-width: 1100px) {
+            .configuration-layout { grid-template-columns: 190px minmax(0, 1fr); gap: 16px; }
         }
-        .configuration-content table { width: 100%; border-collapse: collapse; }
-        .configuration-content table th { padding: 10px 14px; vertical-align: middle; }
-        .configuration-content table td { padding: 8px 14px; vertical-align: middle; }
-        .configuration-content table tbody tr { transition: background-color 120ms ease; }
-        .configuration-content table tbody tr:hover,
-        .configuration-content table tbody tr:focus-within { background-color: #eaf7fc; }
-        .configuration-content td:last-child .flex { flex-wrap: nowrap; align-items: center; }
+        @media (max-width: 900px) {
+            .configuration-layout { grid-template-columns: minmax(0, 1fr); }
+            .configuration-navigation ul { grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); }
+        }
+        .configuration-content table { width: 100%; border-collapse: collapse; text-align: left; }
+        .configuration-content thead { background: #f8fafc; color: #475569; }
+        .configuration-content thead th {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+        }
+        .configuration-content table :is(th, td) { padding: 6px 12px; vertical-align: middle; }
+        .configuration-content tbody tr { transition: background-color 120ms ease; }
+        .configuration-content tbody tr:is(:hover, :focus-within),
+        .configuration-content .config-order-item:is(:hover, :focus-within) { background-color: #eaf7fc; }
+        .configuration-content .config-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
         .configuration-content td .config-action { white-space: nowrap; min-width: 74px; }
         .configuration-navigation a:focus-visible { outline: 2px solid #1f7890; outline-offset: 2px; }
 
@@ -212,24 +219,24 @@
         </div>
     @endif
 
-    <div class="configuration-layout flex items-start gap-5">
-        <nav aria-label="Configuration sections" class="configuration-navigation w-[240px] shrink-0 rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+    <div class="configuration-layout">
+        <nav aria-label="Configuration sections" class="configuration-navigation rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
             <div class="border-b border-slate-100 px-3 pb-3 pt-2 text-xs font-bold uppercase tracking-wider text-slate-500">Settings</div>
-            @foreach ($configurationTabs as $tab)
-                @php $isTabActive = $activeConfigurationTab === $tab['id']; @endphp
-                <a href="{{ route('configuration', ['tab' => $tab['id']]) }}"
-                   title="{{ $tab['description'] }}"
-                   @if ($isTabActive) aria-current="page" @endif
-                   class="mt-1 block rounded-md px-3 py-3 transition {{ $isTabActive ? 'bg-[#eaf7fc] text-[#123348]' : 'text-slate-600 hover:bg-slate-50 hover:text-[#123348]' }}">
-                    <span class="flex items-center justify-between gap-3">
-                        <span class="text-sm font-bold">{{ $tab['label'] }}</span>
-                        <span class="shrink-0 rounded-full bg-slate-50 px-2 py-0.5 text-xs font-bold text-slate-500">{{ $tab['count'] }}</span>
-                    </span>
-                </a>
-            @endforeach
+            <ul class="mt-1 grid gap-1">
+                @foreach ($configurationTabs as $tab)
+                    <li>
+                        <a href="{{ route('configuration', ['tab' => $tab['id']]) }}"
+                           title="{{ $tab['description'] }}"
+                           @if ($activeConfigurationTab === $tab['id']) aria-current="page" @endif
+                           class="flex min-h-9 items-center rounded-md px-2.5 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-[#123348]">
+                            {{ $tab['label'] }}
+                        </a>
+                    </li>
+                @endforeach
+            </ul>
         </nav>
 
-        <div class="configuration-content min-w-0 flex-1">
+        <div class="configuration-content min-w-0">
             @if ($activeConfigurationTab === 'application-types')
                 @include('crm.configuration.application-types')
             @elseif ($activeConfigurationTab === 'checkpoints')
@@ -326,7 +333,7 @@
                                             @endif
                                         </td>
                                         <td class="px-5 py-4 align-top">
-                                            <div class="flex flex-wrap justify-end gap-2">
+                                            <div class="config-row-actions">
                                                 <button form="{{ $updateFormId }}" type="submit" class="config-action config-primary">
                                                     {!! payroll_icon('check', 'h-4 w-4') !!}
                                                     <span>Save</span>
@@ -416,7 +423,7 @@
                                             </label>
                                         </td>
                                         <td class="px-5 py-4 align-top">
-                                            <div class="flex flex-wrap justify-end gap-2">
+                                            <div class="config-row-actions">
                                                 <button form="{{ $updateFormId }}" type="submit" class="config-action config-primary">
                                                     {!! payroll_icon('check', 'h-4 w-4') !!}
                                                     <span>Save</span>

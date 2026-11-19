@@ -46,7 +46,7 @@
                             <td>{{ $option->subclass }}</td>
                             <td>{{ isset($nominationVisaOptions[$option->subclass]) ? preg_replace('/^\d{3}\s*[-–]\s*/u', '', $nominationVisaOptions[$option->subclass]) : 'Visa name not configured' }}</td>
                             <td>{{ $option->sbs_required ? 'Y' : '' }}</td>
-                            <td><div class="flex justify-end gap-2">
+                            <td><div class="config-row-actions">
                                 <a href="{{ route('configuration', ['tab' => 'nomination-subclasses', 'edit' => $option->id]) }}" class="config-action config-primary" aria-label="Edit subclass {{ $option->subclass }}">Edit</a>
                                 <form method="POST" action="{{ route('configuration.nomination-subclasses.destroy', $option) }}" onsubmit="return confirm('Remove this subclass from new nominations?')">
                                     @csrf @method('DELETE')
