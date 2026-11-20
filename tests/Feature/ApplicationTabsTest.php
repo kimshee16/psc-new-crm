@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Application;
 use App\Models\ApplicationActivity;
 use App\Models\ApplicationTypeSetting;
+use App\Models\ApplicationWorkflow;
+use App\Models\Checkpoint;
 use App\Models\Organisation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -92,6 +94,44 @@ class ApplicationTabsTest extends TestCase
                 ->assertSee('Quotes content is work in progress.')
                 ->assertDontSee('Tasks content is work in progress.');
         }
+    }
+
+    public function test_subtype_copies_defaults_and_can_override_them_while_sharing_type_tabs(): void
+    {
+        $admin = User::factory()->create(['account_type' => 'Admin']);
+        $checkpoint = Checkpoint::create(['name' => 'Review', 'statuses' => ['Pending', 'Done']]);
+        $route = route('configuration.application-types.update');
+
+        $this->actingAs($admin)->patch($route, [
+            'category' => 'Study', 'mode' => 'type', 'service_agreement_id' => 7,
+            'email_templates' => "Welcome\nFollow-up", 'required_documents' => 'Passport',
+            'forms' => 'Intake', 'actions' => 'Review case', 'checkpoint_ids' => [$checkpoint->id],
+            'tabs' => ['forms'],
+        ])->assertSessionHasNoErrors();
+
+        $this->patch($route, ['category' => 'Study', 'mode' => 'create', 'name' => 'Higher Education'])
+            ->assertSessionHasNoErrors();
+
+        $type = ApplicationTypeSetting::firstOrFail();
+        $workflow = ApplicationWorkflow::firstOrFail();
+        $this->assertSame(collect($type->defaults)->except('migration_agent_id')->all(), $workflow->defaults);
+        $this->assertSame([$checkpoint->id], $workflow->checkpoint_ids);
+
+        $this->patchJson($route, [
+            'category' => 'Study', 'mode' => 'subtype', 'workflow_id' => $workflow->id, 'tabs' => ['tasks'],
+        ])->assertUnprocessable()->assertJsonValidationErrors('tabs');
+
+        $this->patch($route, [
+            'category' => 'Study', 'mode' => 'subtype', 'workflow_id' => $workflow->id,
+            'service_agreement_id' => 6, 'required_documents' => 'Transcript',
+        ])->assertSessionHasNoErrors();
+
+        $workflow->refresh();
+        $this->assertSame(6, $workflow->defaults['service_agreement_id']);
+        $this->assertSame(['Transcript'], $workflow->defaults['required_documents']);
+        $this->assertSame([], $workflow->checkpoint_ids);
+        $this->assertSame(7, $type->fresh()->defaults['service_agreement_id']);
+        $this->assertSame(['forms' => 'Forms'], ApplicationTypeSetting::tabsFor('Study'));
     }
 
     public function test_all_tabs_can_be_disabled_and_reenabled(): void

@@ -103,7 +103,7 @@ class ConfigurationController extends Controller
             'checkpoints' => Checkpoint::query()->orderBy('name')->orderBy('id')->get(),
             'editingCheckpoint' => $request->query('tab') === 'checkpoints' && $request->query('edit')
                 ? Checkpoint::findOrFail($request->query('edit')) : null,
-            'applicationWorkflows' => $request->query('tab') === 'workflow-checkpoints'
+            'applicationWorkflows' => in_array($request->query('tab'), ['workflow-checkpoints', 'application-types'], true)
                 ? ApplicationWorkflow::query()->orderBy('category')->orderBy('name')->get() : collect(),
             'educationLevels' => EducationLevel::query()
                 ->orderBy('sort_order')

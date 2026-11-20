@@ -12,7 +12,7 @@ class ApplicationWorkflow extends Model
 
     protected function casts(): array
     {
-        return ['summary_options' => 'array', 'checkpoint_ids' => 'array'];
+        return ['summary_options' => 'array', 'checkpoint_ids' => 'array', 'defaults' => 'array'];
     }
 
     public function migrationAgent(): BelongsTo

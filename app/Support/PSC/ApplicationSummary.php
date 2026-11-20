@@ -3,6 +3,7 @@
 namespace App\Support\PSC;
 
 use App\Models\Application;
+use App\Models\ApplicationTypeSetting;
 use App\Models\ApplicationWorkflow;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -91,11 +92,11 @@ class ApplicationSummary
         $application = new Application($identity);
         $application->setRelation('workflow', $workflow);
         $application->primary_counsellor_id = $creator->id;
-        $application->migration_agent_id = $workflow?->migration_agent_id;
+        $application->migration_agent_id = ApplicationTypeSetting::defaultAgent($application->category, $workflow);
         $input += [
             'status' => 'Not Started', 'priority' => 'M',
             'primary_counsellor_id' => $creator->id,
-            'migration_agent_id' => $workflow?->migration_agent_id,
+            'migration_agent_id' => $application->migration_agent_id,
         ];
         $rules = $this->editableRules($application);
         $rules['psc_client'] = $application->category === 'ART Appeal' ? ['required', 'boolean'] : ['missing'];

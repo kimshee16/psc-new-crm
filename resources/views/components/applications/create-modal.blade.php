@@ -203,10 +203,12 @@
         setField('psc_client', enabled && category === 'ART Appeal', [{ id: '1', name: 'Yes' }, { id: '0', name: 'No' }]);
         const visa = combined ? workflow('visa_workflow_id') : selected;
         const needsAgent = enabled && (combined || category === 'Visa');
-        setField('migration_agent_id', needsAgent && !visa?.migration_agent_id, visa?.staff ?? config.staff);
+        const agentId = visa ? visa.migration_agent_id : config.default_visa_agent_id;
+        const agentStaff = visa?.staff ?? config.staff;
+        setField('migration_agent_id', needsAgent && !agentId, agentStaff);
         const agentHelp = dialog.querySelector('[data-agent-default]');
-        agentHelp.hidden = !(needsAgent && visa?.migration_agent_id);
-        agentHelp.textContent = visa?.migration_agent_id ? 'Migration Agent: ' + (visa.staff.find(person => person.id === visa.migration_agent_id)?.name ?? 'Template default') : '';
+        agentHelp.hidden = !(needsAgent && agentId);
+        agentHelp.textContent = agentId ? 'Migration Agent: ' + (agentStaff.find(person => String(person.id) === String(agentId))?.name ?? 'Configured default') : '';
         dialog.querySelector('[data-combined]').hidden = !(enabled && combined);
         dialog.querySelector('[data-lead-help]').hidden = !leadOnly.checked;
     };

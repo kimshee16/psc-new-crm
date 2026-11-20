@@ -22,6 +22,7 @@ class MigrationAgent extends Model
     public function isInUse(): bool
     {
         return $this->user_id !== null && (Application::where('migration_agent_id', $this->user_id)->exists()
-            || ApplicationWorkflow::where('migration_agent_id', $this->user_id)->exists());
+            || ApplicationWorkflow::where('migration_agent_id', $this->user_id)->exists()
+            || ApplicationTypeSetting::whereJsonContains('defaults->migration_agent_id', (int) $this->user_id)->exists());
     }
 }

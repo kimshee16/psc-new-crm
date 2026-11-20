@@ -3,6 +3,7 @@
 namespace App\Support\PSC;
 
 use App\Models\Application;
+use App\Models\ApplicationTypeSetting;
 use App\Models\ApplicationWorkflow;
 use App\Models\Client;
 use App\Models\Lead;
@@ -34,14 +35,16 @@ class ApplicationCreation
             'workflows' => $workflows->map(function (ApplicationWorkflow $workflow) use ($user) {
                 $draft = new Application(['primary_counsellor_id' => $user->id]);
                 $draft->setRelation('workflow', $workflow);
+                $draft->migration_agent_id = ApplicationTypeSetting::defaultAgent($workflow->category, $workflow);
 
                 return [
                     'id' => $workflow->id, 'name' => $workflow->name, 'category' => $workflow->category,
                     'options' => $workflow->summary_options ?? [],
-                    'migration_agent_id' => $workflow->migration_agent_id,
+                    'migration_agent_id' => $draft->migration_agent_id,
                     'staff' => $this->summary->eligibleStaff($draft)->get(['id', 'name'])->toArray(),
                 ];
             })->all(),
+            'default_visa_agent_id' => ApplicationTypeSetting::defaultAgent('Visa'),
             'staff' => $this->summary->eligibleStaff(new Application)->get(['id', 'name'])->toArray(),
         ];
     }
@@ -82,7 +85,7 @@ class ApplicationCreation
                     $attributes[$field] = $data[$field];
                 }
             }
-            if ($category === 'Visa' && ! $workflow?->migration_agent_id) {
+            if ($category === 'Visa' && ! ApplicationTypeSetting::defaultAgent($category, $workflow)) {
                 $attributes['migration_agent_id'] = $data['migration_agent_id'] ?? null;
             }
             $application = $this->summary->create($user, $attributes);
@@ -94,7 +97,7 @@ class ApplicationCreation
                     'client_id' => $client->id, 'category' => 'Visa',
                     'application_workflow_id' => $visaWorkflow?->id,
                     'visa_subclass' => '500 - Student Visa',
-                    'migration_agent_id' => $visaWorkflow?->migration_agent_id ?? $data['migration_agent_id'] ?? null,
+                    'migration_agent_id' => ApplicationTypeSetting::defaultAgent('Visa', $visaWorkflow) ?? $data['migration_agent_id'] ?? null,
                 ]);
                 $visa->linked_application_id = $application->id;
                 $visa->source_lead_id = $lead?->id;

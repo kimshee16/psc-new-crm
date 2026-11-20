@@ -6,6 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class ApplicationTypeSetting extends Model
 {
+    public const LIST_FIELDS = [
+        'email_templates' => 'Email templates',
+        'required_documents' => 'Required documents',
+        'forms' => 'Forms',
+        'actions' => 'Actions',
+    ];
+
     public const TABS = [
         'notes' => 'Notes',
         'tasks' => 'Tasks',
@@ -26,11 +33,20 @@ class ApplicationTypeSetting extends Model
 
     public const SBS_TABS = ['tasks', 'rfi', 'nominations', 'payments', 'agreements'];
 
-    protected $fillable = ['category', 'tabs'];
+    protected $fillable = ['category', 'tabs', 'defaults', 'checkpoint_ids'];
 
     protected function casts(): array
     {
-        return ['tabs' => 'array', 'checkpoint_ids' => 'array'];
+        return ['tabs' => 'array', 'checkpoint_ids' => 'array', 'defaults' => 'array'];
+    }
+
+    public static function defaultAgent(string $category, ?ApplicationWorkflow $workflow = null): ?int
+    {
+        if ($workflow?->migration_agent_id !== null || $workflow?->defaults !== null) {
+            return $workflow->migration_agent_id;
+        }
+
+        return self::query()->where('category', $category)->first()?->defaults['migration_agent_id'] ?? null;
     }
 
     public static function types(): array

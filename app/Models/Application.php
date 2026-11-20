@@ -89,7 +89,7 @@ class Application extends Model
     {
         static::creating(function (Application $application): void {
             $application->primary_counsellor_id ??= auth()->id();
-            $application->migration_agent_id ??= $application->workflow?->migration_agent_id;
+            $application->migration_agent_id ??= ApplicationTypeSetting::defaultAgent($application->category, $application->workflow);
         });
         static::saved(function (Application $application): void {
             if ($application->category === 'Visa' && $application->wasChanged(['client_id', 'visa_subclass'])) {
