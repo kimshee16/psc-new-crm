@@ -1,9 +1,15 @@
 <div class="grid gap-4 sm:grid-cols-2">
+    <div @class(['rounded-md border border-yellow-500 p-2' => $overrides['service_agreement_id'] ?? false])>
     <label class="grid gap-1 text-sm font-semibold">
         Service Agreement ID
         <input type="number" name="service_agreement_id" min="1" class="rounded-md border border-slate-300 px-3 py-2"
             value="{{ $useOld ? old('service_agreement_id') : ($defaults['service_agreement_id'] ?? '') }}">
     </label>
+    @if ($overrides['service_agreement_id'] ?? false)
+        <button type="submit" form="{{ $resetFormId }}" name="section" value="service_agreement_id" class="mt-1 text-sm underline">Reset service agreement to type default</button>
+    @endif
+    </div>
+    <div @class(['rounded-md border border-yellow-500 p-2' => $overrides['migration_agent_id'] ?? false])>
     <label class="grid gap-1 text-sm font-semibold">
         Migration agent
         <select name="migration_agent_id" class="rounded-md border border-slate-300 px-3 py-2">
@@ -13,15 +19,24 @@
             @endforeach
         </select>
     </label>
+    @if ($overrides['migration_agent_id'] ?? false)
+        <button type="submit" form="{{ $resetFormId }}" name="section" value="migration_agent_id" class="mt-1 text-sm underline">Reset migration agent to type default</button>
+    @endif
+    </div>
     @foreach (\App\Models\ApplicationTypeSetting::LIST_FIELDS as $key => $fieldLabel)
+        <div @class(['rounded-md border border-yellow-500 p-2' => $overrides[$key] ?? false])>
         <label class="grid gap-1 text-sm font-semibold">
             {{ $fieldLabel }}
             <textarea name="{{ $key }}" rows="3" maxlength="10000" placeholder="One entry per line"
                 class="rounded-md border border-slate-300 px-3 py-2">{{ $useOld ? old($key) : implode("\n", $defaults[$key] ?? []) }}</textarea>
         </label>
+        @if ($overrides[$key] ?? false)
+            <button type="submit" form="{{ $resetFormId }}" name="section" value="{{ $key }}" class="mt-1 text-sm underline">Reset {{ str($fieldLabel)->lower() }} to type default</button>
+        @endif
+        </div>
     @endforeach
 </div>
-<fieldset>
+<fieldset @class(['rounded-md border border-yellow-500 p-2' => $overrides['checkpoint_ids'] ?? false])>
     <legend class="text-sm font-semibold">Checkpoints</legend>
     @php
         $selectedCheckpoints = array_map('strval', array_filter((array) ($useOld ? old('checkpoint_ids', []) : $checkpointIds), 'is_scalar'));
@@ -41,4 +56,7 @@
             <p class="text-sm text-slate-600">No checkpoints are configured.</p>
         @endforelse
     </div>
+    @if ($overrides['checkpoint_ids'] ?? false)
+        <button type="submit" form="{{ $resetFormId }}" name="section" value="checkpoint_ids" class="mt-1 text-sm underline">Reset checkpoints to type default</button>
+    @endif
 </fieldset>

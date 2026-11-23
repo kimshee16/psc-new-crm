@@ -40,6 +40,17 @@
                         $defaults['migration_agent_id'] = $workflow->migration_agent_id
                             ?? ($workflow->defaults === null ? ($defaults['migration_agent_id'] ?? null) : null);
                         $checkpointIds = $workflow->checkpoint_ids ?? $setting?->checkpoint_ids ?? [];
+                        $parentDefaults = $setting?->defaults ?? [];
+                        $overriddenSections = [];
+                        foreach (\App\Models\ApplicationTypeSetting::LIST_FIELDS as $key => $fieldLabel) {
+                            $overriddenSections[$key] = ($defaults[$key] ?? []) !== ($parentDefaults[$key] ?? []);
+                        }
+                        foreach (['migration_agent_id', 'service_agreement_id'] as $key) {
+                            $overriddenSections[$key] = (int) ($defaults[$key] ?? 0) !== (int) ($parentDefaults[$key] ?? 0);
+                        }
+                        $overriddenSections['checkpoint_ids'] = array_map('intval', $checkpointIds)
+                            !== array_map('intval', $setting?->checkpoint_ids ?? []);
+                        $resetForm = 'reset-subtype-'.$workflow->id;
                         $useOld = old('mode') === 'subtype' && (string) old('workflow_id') === (string) $workflow->id;
                     @endphp
                     <details class="mb-3 rounded-lg border border-slate-200 p-4" @if($useOld) open @endif>
@@ -50,8 +61,20 @@
                             <input type="hidden" name="mode" value="subtype">
                             <input type="hidden" name="category" value="{{ $category }}">
                             <input type="hidden" name="workflow_id" value="{{ $workflow->id }}">
-                            @include('crm.configuration.application-defaults')
+                            <label class="grid gap-1 text-sm font-semibold">
+                                Subtype name
+                                <input name="name" required maxlength="255" class="rounded-md border border-slate-300 px-3 py-2"
+                                    value="{{ $useOld ? old('name', $workflow->name) : $workflow->name }}">
+                            </label>
+                            @include('crm.configuration.application-defaults', ['overrides' => $overriddenSections, 'resetFormId' => $resetForm])
                             <div><button type="submit" class="config-action config-primary">Save subtype settings</button></div>
+                        </form>
+                        <form id="{{ $resetForm }}" method="POST" action="{{ route('configuration.application-types.update') }}">
+                            @csrf
+                            @method('PATCH')
+                            <input type="hidden" name="mode" value="reset">
+                            <input type="hidden" name="category" value="{{ $category }}">
+                            <input type="hidden" name="workflow_id" value="{{ $workflow->id }}">
                         </form>
                     </details>
                 @endforeach

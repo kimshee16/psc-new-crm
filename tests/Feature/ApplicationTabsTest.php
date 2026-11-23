@@ -123,12 +123,23 @@ class ApplicationTabsTest extends TestCase
 
         $this->patch($route, [
             'category' => 'Study', 'mode' => 'subtype', 'workflow_id' => $workflow->id,
-            'service_agreement_id' => 6, 'required_documents' => 'Transcript',
+            'name' => 'University Study', 'service_agreement_id' => 6, 'required_documents' => 'Transcript',
         ])->assertSessionHasNoErrors();
 
         $workflow->refresh();
         $this->assertSame(6, $workflow->defaults['service_agreement_id']);
         $this->assertSame(['Transcript'], $workflow->defaults['required_documents']);
+        $this->assertSame([], $workflow->checkpoint_ids);
+        $this->assertSame('University Study', $workflow->name);
+        $this->get(route('configuration', ['tab' => 'application-types']))
+            ->assertOk()->assertSee('Reset required documents to type default', false);
+        $this->patch($route, [
+            'category' => 'Study', 'mode' => 'reset', 'workflow_id' => $workflow->id,
+            'section' => 'required_documents',
+        ])->assertSessionHasNoErrors();
+        $workflow->refresh();
+        $this->assertSame(['Passport'], $workflow->defaults['required_documents']);
+        $this->assertSame(6, $workflow->defaults['service_agreement_id']);
         $this->assertSame([], $workflow->checkpoint_ids);
         $this->assertSame(7, $type->fresh()->defaults['service_agreement_id']);
         $this->assertSame(['forms' => 'Forms'], ApplicationTypeSetting::tabsFor('Study'));
