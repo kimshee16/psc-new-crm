@@ -58,6 +58,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'mfa_secret',
+        'mfa_last_step',
     ];
 
     /**
@@ -73,6 +75,8 @@ class User extends Authenticatable
             'offices' => 'array',
             'include_in_round_robin' => 'boolean',
             'is_active' => 'boolean',
+            'mfa_secret' => 'encrypted',
+            'mfa_last_step' => 'integer',
         ];
     }
 
@@ -89,6 +93,13 @@ class User extends Authenticatable
     public function hasPortalAccess(): bool
     {
         return $this->is_active && $this->portal_invite_status !== 'Restrict Access';
+    }
+
+    public function authenticationVersion(): string
+    {
+        return hash_hmac('sha256', json_encode([
+            $this->id, $this->password, $this->getRawOriginal('mfa_secret'),
+        ], JSON_THROW_ON_ERROR), config('app.key'));
     }
 
     /**

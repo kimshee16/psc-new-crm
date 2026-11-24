@@ -28,28 +28,11 @@ use App\Http\Controllers\TasksController;
 use App\Http\Controllers\UserConfigurationController;
 use App\Http\Controllers\UserInvitationController;
 use App\Http\Controllers\WebsiteLeadFormController;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 $registerRoutes = function () {
     Route::get('/invitation/{token}', [UserInvitationController::class, 'show'])->name('invitation.accept');
     Route::post('/invitation', [UserInvitationController::class, 'accept'])->middleware('throttle:6,1')->name('invitation.store');
-    Route::get('/run-migration', function () {
-        Artisan::call('migrate:refresh');
-
-        return 'Database migrated successfully!';
-    });
-
-    Route::get('/run-seeder', function () {
-        Artisan::call('db:seed', ['--force' => true]);
-
-        return implode(PHP_EOL, [
-            'Database seeded successfully!',
-            'Admin email: admin@psccrm.test',
-            'Admin password: password',
-        ]);
-    });
-
     Route::get('/contact', [WebsiteLeadFormController::class, 'contact'])->name('website.contact');
     Route::post('/contact', [WebsiteLeadFormController::class, 'submitContact'])->name('website.contact.submit');
     Route::get('/book-a-free-consultation', [WebsiteLeadFormController::class, 'consultation'])->name('website.consultation');
@@ -65,7 +48,9 @@ $registerRoutes = function () {
 
     Route::middleware('guest')->group(function () {
         Route::get('/login', [AuthController::class, 'create'])->name('login');
-        Route::post('/login', [AuthController::class, 'store'])->name('login.store');
+        Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:crm-login')->name('login.store');
+        Route::get('/login/verify', [AuthController::class, 'challenge'])->name('login.mfa');
+        Route::post('/login/verify', [AuthController::class, 'verify'])->middleware('throttle:crm-mfa')->name('login.mfa.verify');
     });
 
     Route::post('/logout', [AuthController::class, 'destroy'])

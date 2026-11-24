@@ -19,7 +19,7 @@
                         alt="Progress Study Consultancy"
                         class="mb-5 block h-auto max-h-16 w-full max-w-[300px] object-contain object-left"
                     >
-                    <p class="mt-2 text-sm text-slate-500">Sign in to continue.</p>
+                    <p class="mt-2 text-sm text-slate-500">{{ ($challenge ?? false) ? 'Two-step verification' : 'Sign in to continue.' }}</p>
                 </header>
 
                 @if (session('status'))
@@ -28,6 +28,26 @@
                     </div>
                 @endif
 
+                @if ($challenge ?? false)
+                    <form method="POST" action="{{ route('login.mfa.verify') }}" class="space-y-5">
+                        @csrf
+                        @if ($secret !== null)
+                            <p class="text-sm text-slate-700">Add PSC CRM to your authenticator app using this time-based setup key.</p>
+                            <code class="block break-all select-all rounded-md bg-slate-100 p-3 text-sm">{{ $secret }}</code>
+                        @endif
+                        <div>
+                            <label for="code" class="mb-2 block text-sm font-semibold text-slate-700">Authenticator code</label>
+                            <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code"
+                                pattern="[0-9]{6}" maxlength="6" required autofocus
+                                class="block w-full rounded-md border border-slate-300 px-3 py-2.5">
+                            @error('code')
+                                <p class="mt-2 text-sm font-medium text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <button type="submit" class="w-full rounded-md bg-[#003b5c] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#005078]">Verify</button>
+                        <a href="{{ route('login') }}" class="block text-center text-sm text-[#003b5c] underline">Back to sign in</a>
+                    </form>
+                @else
                 <form method="POST" action="{{ route('login.store') }}" class="space-y-5">
                     @csrf
 
@@ -63,6 +83,7 @@
                         @enderror
                     </div>
 
+                    @unless (config('auth.require_mfa'))
                     <label class="flex items-center gap-2 text-sm font-medium text-slate-600">
                         <input
                             name="remember"
@@ -72,11 +93,13 @@
                         >
                         Remember me
                     </label>
+                    @endunless
 
                     <button type="submit" class="flex w-full items-center justify-center rounded-md bg-[#003b5c] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#005078] focus:outline-none focus:ring-2 focus:ring-[#003b5c]/25">
                         Sign In
                     </button>
                 </form>
+                @endif
             </section>
         </main>
     </body>

@@ -1435,7 +1435,7 @@ class ClientsController extends Controller
      */
     private function canManageClientNotes(User $user, array $client): bool
     {
-        if (in_array($user->account_type, User::MY_OFFICES_ACCOUNT_TYPES, true)) {
+        if (in_array($user->account_type, [...User::MY_OFFICES_ACCOUNT_TYPES, 'Super Admin'], true)) {
             return true;
         }
 

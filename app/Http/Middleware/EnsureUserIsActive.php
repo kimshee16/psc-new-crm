@@ -20,6 +20,19 @@ class EnsureUserIsActive
         }
 
         if ($request->user()) {
+            if (config('auth.require_mfa') && ! hash_equals(
+                $request->user()->authenticationVersion(),
+                (string) $request->session()->get('mfa_verified'),
+            )) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return $request->expectsJson()
+                    ? response()->json(['message' => 'Sign in with two-step verification.'], 401)
+                    : redirect()->guest(route('login'));
+            }
+
             // Keep records, lists and nomination defaults current even between scheduler runs.
             app(\App\Support\PSC\SbsRecord::class)->expireDue();
         }

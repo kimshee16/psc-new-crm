@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Application;
 use App\Models\Client;
 use App\Models\Lead;
+use App\Models\RolePrivilege;
 use App\Models\User;
 use App\Support\PSC\RecordNotes;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -84,6 +85,36 @@ class RecordNotesTest extends TestCase
             }
             $this->assertNull($record->fresh()->notes);
         }
+    }
+
+    public function test_client_notes_permission_is_independent_of_profile_edit_access(): void
+    {
+        $counsellor = User::factory()->create(['account_type' => 'Counsellor']);
+        $records = $this->records($counsellor);
+        $notesUrl = array_key_first($records);
+        $profileUrl = str($notesUrl)->beforeLast('/notes')->toString();
+        RolePrivilege::create([
+            'account_type' => 'Counsellor', 'permissions' => ['clients.view'],
+            'record_scope' => 'existing', 'notes_access' => 'write',
+        ]);
+
+        $this->actingAs($counsellor)->get($profileUrl)->assertOk()
+            ->assertSee('Add Note')->assertViewHas('isEditing', false);
+        $this->post($profileUrl.'/edit')->assertForbidden();
+        $this->postJson($notesUrl, ['version' => hash('sha256', ''), 'body' => 'Inline note'])->assertOk();
+
+        $admin = User::factory()->create(['account_type' => 'Super Admin']);
+        $this->actingAs($admin)->get($profileUrl)->assertOk()
+            ->assertSee('Edit note')->assertViewHas('isEditing', false);
+        $client = $records[$notesUrl]->fresh();
+        $note = app(RecordNotes::class)->all($client->notes)[0];
+        $this->patchJson($notesUrl.'/'.$note['id'], [
+            'version' => hash('sha256', $client->notes), 'body' => 'Updated inline',
+        ])->assertOk();
+
+        $edited = app(RecordNotes::class)->all($client->fresh()->notes)[0];
+        $this->assertSame($counsellor->name, $edited['author']);
+        $this->assertSame($admin->name, $edited['edited_by']);
     }
 
     public function test_stale_notes_and_invalid_input_cannot_overwrite_saved_notes(): void
