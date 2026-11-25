@@ -12,13 +12,17 @@
             @endforeach
         </nav>
         <section class="p-6" aria-labelledby="application-tab-{{ $activeTab }}">
-            <h2 class="text-lg font-bold">{{ $tabs[$activeTab] }}</h2>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <h2 class="text-lg font-bold">{{ $tabs[$activeTab] }}</h2>
+                @if ($activeTab === 'rfi' && $rfis !== null && $access->allows(auth()->user(), 'rfis', 'create'))
+                    <a href="{{ route('applications.rfis.create', $application) }}" class="rounded-md bg-[#1f7890] px-4 py-2 text-sm font-semibold text-white">+ Add RFI</a>
+                @endif
+            </div>
             @if ($activeTab === 'notes')
                 <x-related-record-notes :record="$application" module="applications" :record-id="$application->id" />
             @elseif ($activeTab === 'nominations' && $nominations !== null)
                 @include('crm.applications.sbs-nominations')
             @elseif ($activeTab === 'rfi' && $rfis !== null)
-                @if($access->allows(auth()->user(), 'rfis', 'create'))<div class="mt-4 flex justify-end"><a href="{{ route('applications.rfis.create', $application) }}" class="rounded-md bg-[#1f7890] px-4 py-2 text-sm font-semibold text-white">+ Add RFI</a></div>@endif
                 @include('crm.rfis.styles')
                 <x-rfis.table :rfis="$rfis" return-to="application" />
                 <div class="mt-4">{{ $rfis->links() }}</div>
