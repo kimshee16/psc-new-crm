@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/critical-date-range.js'],
+            input: ['resources/css/app.css', 'resources/js/critical-date-range.js', 'resources/js/visa-charge-editor.js'],
             refresh: true,
         }),
         tailwindcss(),

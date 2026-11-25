@@ -96,7 +96,7 @@ class ApplicationTabsTest extends TestCase
         }
     }
 
-    public function test_subtype_copies_defaults_and_can_override_them_while_sharing_type_tabs(): void
+    public function test_subtype_copies_defaults_and_can_override_them_including_tabs(): void
     {
         $admin = User::factory()->create(['account_type' => 'Admin']);
         $checkpoint = Checkpoint::create(['name' => 'Review', 'statuses' => ['Pending', 'Done']]);
@@ -114,12 +114,14 @@ class ApplicationTabsTest extends TestCase
 
         $type = ApplicationTypeSetting::firstOrFail();
         $workflow = ApplicationWorkflow::firstOrFail();
-        $this->assertSame(collect($type->defaults)->except('migration_agent_id')->all(), $workflow->defaults);
+        $this->assertSame(collect($type->defaults)->except('migration_agent_id')->all() + ['tabs' => ['forms']], $workflow->defaults);
         $this->assertSame([$checkpoint->id], $workflow->checkpoint_ids);
 
         $this->patchJson($route, [
             'category' => 'Study', 'mode' => 'subtype', 'workflow_id' => $workflow->id, 'tabs' => ['tasks'],
-        ])->assertUnprocessable()->assertJsonValidationErrors('tabs');
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(['tasks' => 'Tasks'], ApplicationTypeSetting::tabsFor('Study', workflow: $workflow->refresh()));
 
         $this->patch($route, [
             'category' => 'Study', 'mode' => 'subtype', 'workflow_id' => $workflow->id,

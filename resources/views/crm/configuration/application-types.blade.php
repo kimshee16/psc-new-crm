@@ -1,6 +1,6 @@
 <section aria-labelledby="application-types-heading">
     <h2 id="application-types-heading" class="text-lg font-bold">Application Types</h2>
-    <p class="mt-2 mb-5 text-sm text-slate-600">Choose the tabs shown for each type. New subtypes copy the other settings and share the type's tabs.</p>
+    <p class="mt-2 mb-5 text-sm text-slate-600">Choose the tabs shown for each type. New subtypes copy their type's settings and can customise or reset each section.</p>
     <div class="grid gap-4">
         @foreach ($applicationTypes as $category => $label)
             @php
@@ -67,6 +67,24 @@
                                     value="{{ $useOld ? old('name', $workflow->name) : $workflow->name }}">
                             </label>
                             @include('crm.configuration.application-defaults', ['overrides' => $overriddenSections, 'resetFormId' => $resetForm])
+                            @php($subtypeTabs = $workflow->defaults['tabs'] ?? $selectedTabs)
+                            <fieldset @class(['rounded-md border border-yellow-500 p-2' => $subtypeTabs !== $selectedTabs])>
+                                <legend class="text-sm font-semibold">Tabs</legend>
+                                <input type="hidden" name="tabs_present" value="1">
+                                <div class="mt-2 flex flex-wrap gap-x-6 gap-y-3">
+                                    @foreach ($applicationTabOptions as $key => $tabLabel)
+                                        @continue($key === 'nominations' && $category !== 'SBS')
+                                        <label class="flex items-center gap-2 text-sm">
+                                            <input type="checkbox" name="tabs[]" value="{{ $key }}"
+                                                @checked(in_array($key, (array) ($useOld ? old('tabs', []) : $subtypeTabs), true))>
+                                            {{ $tabLabel }}
+                                        </label>
+                                    @endforeach
+                                </div>
+                                @if ($subtypeTabs !== $selectedTabs)
+                                    <button type="submit" form="{{ $resetForm }}" name="section" value="tabs" class="mt-1 text-sm underline">Reset tabs to type default</button>
+                                @endif
+                            </fieldset>
                             <div><button type="submit" class="config-action config-primary">Save subtype settings</button></div>
                         </form>
                         <form id="{{ $resetForm }}" method="POST" action="{{ route('configuration.application-types.update') }}">

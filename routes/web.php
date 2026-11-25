@@ -157,6 +157,7 @@ $registerRoutes = function () {
         Route::patch('/configuration/nomination-subclasses/{nominationSubclass}', [NominationSubclassConfigurationController::class, 'update'])->name('configuration.nomination-subclasses.update');
         Route::delete('/configuration/nomination-subclasses/{nominationSubclass}', [NominationSubclassConfigurationController::class, 'destroy'])->name('configuration.nomination-subclasses.destroy');
         Route::patch('/configuration/application-types', [ApplicationTypeConfigurationController::class, 'update'])->name('configuration.application-types.update');
+        Route::patch('/configuration/visa-charges', [\App\Http\Controllers\VisaChargeConfigurationController::class, 'update'])->name('configuration.visa-charges.update');
         Route::post('/configuration/checkpoints', [CheckpointConfigurationController::class, 'store'])->name('configuration.checkpoints.store');
         Route::patch('/configuration/checkpoints/{checkpoint}', [CheckpointConfigurationController::class, 'update'])->whereNumber('checkpoint')->name('configuration.checkpoints.update');
         Route::delete('/configuration/checkpoints/{checkpoint}', [CheckpointConfigurationController::class, 'destroy'])->whereNumber('checkpoint')->name('configuration.checkpoints.destroy');

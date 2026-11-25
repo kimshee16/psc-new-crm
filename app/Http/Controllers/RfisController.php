@@ -33,7 +33,7 @@ class RfisController extends Controller
     public function create(Request $request, int $application): View
     {
         $record = Application::assignedTo($request->user())->findOrFail($application);
-        abort_unless(isset(ApplicationTypeSetting::tabsFor($record->category, $record->sponsor_type)['rfi']), 422, 'RFI is disabled for this application type.');
+        abort_unless(isset(ApplicationTypeSetting::tabsFor($record->category, $record->sponsor_type, $record->workflow)['rfi']), 422, 'RFI is disabled for this application type.');
         $rfi = new ApplicationRfi(['assigned_to_user_id' => $request->user()->id]);
         $rfi->application()->associate($record);
 
@@ -55,7 +55,7 @@ class RfisController extends Controller
     public function store(Request $request, int $application): RedirectResponse
     {
         $record = Application::assignedTo($request->user())->findOrFail($application);
-        abort_unless(isset(ApplicationTypeSetting::tabsFor($record->category, $record->sponsor_type)['rfi']), 422, 'RFI is disabled for this application type.');
+        abort_unless(isset(ApplicationTypeSetting::tabsFor($record->category, $record->sponsor_type, $record->workflow)['rfi']), 422, 'RFI is disabled for this application type.');
         $request->mergeIfMissing(['status' => 'Received', 'assigned_to_user_id' => $request->user()->id]);
         $rfi = new ApplicationRfi;
         $rfi->application()->associate($record);

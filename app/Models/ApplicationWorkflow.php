@@ -12,12 +12,28 @@ class ApplicationWorkflow extends Model
 
     protected function casts(): array
     {
-        return ['summary_options' => 'array', 'checkpoint_ids' => 'array', 'defaults' => 'array'];
+        return ['summary_options' => 'array', 'checkpoint_ids' => 'array', 'defaults' => 'array', 'visa_charges' => 'array'];
     }
 
     public function migrationAgent(): BelongsTo
     {
         return $this->belongsTo(User::class, 'migration_agent_id');
+    }
+
+    public function visaChargesAsOf(string $date): array
+    {
+        if ($this->category !== 'Visa') {
+            return [];
+        }
+
+        return collect($this->visa_charges ?? [])
+            ->filter(fn (array $row) => filled($row['effective'] ?? null) && $row['effective'] <= $date)
+            ->sortByDesc('effective')
+            ->unique(fn (array $row) => mb_strtolower($row['name'] ?? ''))
+            ->filter(fn (array $row) => (float) ($row['primary'] ?? 0) > 0)
+            ->sortBy(fn (array $row) => mb_strtolower($row['name'] ?? ''))
+            ->values()
+            ->all();
     }
 
     public function getMigrationAgentDetailsAttribute(): ?MigrationAgent

@@ -103,6 +103,14 @@ class ConfigurationController extends Controller
             'checkpoints' => Checkpoint::query()->orderBy('name')->orderBy('id')->get(),
             'editingCheckpoint' => $request->query('tab') === 'checkpoints' && $request->query('edit')
                 ? Checkpoint::findOrFail($request->query('edit')) : null,
+            'visaChargeGroups' => $request->query('tab') === 'visa-charges'
+                ? ApplicationWorkflow::query()->where('category', 'Visa')->orderBy('name')->get()->map(fn ($workflow) => [
+                    'id' => $workflow->id,
+                    'name' => $workflow->name,
+                    'revision' => VisaChargeConfigurationController::revision($workflow),
+                    'rows' => $workflow->visa_charges ?: [['name' => null]],
+                ])->all()
+                : [],
             'applicationWorkflows' => in_array($request->query('tab'), ['workflow-checkpoints', 'application-types'], true)
                 ? ApplicationWorkflow::query()->orderBy('category')->orderBy('name')->get() : collect(),
             'educationLevels' => EducationLevel::query()
@@ -444,6 +452,6 @@ class ConfigurationController extends Controller
     {
         $tab = (string) $request->query('tab', 'locations');
 
-        return in_array($tab, ['locations', 'education-levels', 'offices', 'regions', 'users', 'redirections', 'countries', 'events', 'event-marketing', 'application-types', 'nomination-subclasses', 'migration-agents', 'checkpoints', 'workflow-checkpoints'], true) ? $tab : 'locations';
+        return in_array($tab, ['locations', 'education-levels', 'offices', 'regions', 'users', 'redirections', 'countries', 'events', 'event-marketing', 'application-types', 'nomination-subclasses', 'migration-agents', 'checkpoints', 'workflow-checkpoints', 'visa-charges'], true) ? $tab : 'locations';
     }
 }

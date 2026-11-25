@@ -10,6 +10,7 @@ class ApplicationTypeSetting extends Model
         'email_templates' => 'Email templates',
         'required_documents' => 'Required documents',
         'forms' => 'Forms',
+        'modules' => 'Modules',
         'actions' => 'Actions',
     ];
 
@@ -54,7 +55,7 @@ class ApplicationTypeSetting extends Model
         return Application::TYPES + ['SBS' => 'SBS'];
     }
 
-    public static function tabsFor(string $category, ?string $sponsorType = null): array
+    public static function tabsFor(string $category, ?string $sponsorType = null, ?ApplicationWorkflow $workflow = null): array
     {
         if (! array_key_exists($category, self::types())) {
             return [];
@@ -63,7 +64,7 @@ class ApplicationTypeSetting extends Model
         $setting = self::query()->where('category', $category)->first();
 
         // An absent setting inherits the defaults; an empty list disables all tabs.
-        $tabs = self::availableTabs($setting?->tabs ?? self::defaultTabs($category));
+        $tabs = self::availableTabs($workflow?->defaults['tabs'] ?? $setting?->tabs ?? self::defaultTabs($category));
 
         return $category === 'SBS' ? $tabs : array_diff_key($tabs, ['nominations' => true]);
     }

@@ -26,7 +26,7 @@ class ApplicationTypeConfigurationController extends Controller
             $data = $request->validate([
                 'workflow_id' => ['required', 'integer'],
                 'section' => ['required', Rule::in([
-                    'checkpoint_ids', 'migration_agent_id', 'service_agreement_id',
+                    'checkpoint_ids', 'migration_agent_id', 'service_agreement_id', 'tabs',
                     ...array_keys(ApplicationTypeSetting::LIST_FIELDS),
                 ])],
             ]);
@@ -47,8 +47,9 @@ class ApplicationTypeConfigurationController extends Controller
                         $workflow->migration_agent_id ??= $defaults['migration_agent_id'] ?? null;
                     }
                     unset($defaults['migration_agent_id']);
-                    $defaults[$section] = $setting?->defaults[$section]
-                        ?? ($section === 'service_agreement_id' ? null : []);
+                    $defaults[$section] = $section === 'tabs'
+                        ? ($setting?->tabs ?? ApplicationTypeSetting::defaultTabs($category))
+                        : ($setting?->defaults[$section] ?? ($section === 'service_agreement_id' ? null : []));
                     $workflow->defaults = $defaults;
                 }
 
@@ -71,6 +72,7 @@ class ApplicationTypeConfigurationController extends Controller
                 $workflow = new ApplicationWorkflow(['category' => $category, 'name' => $name]);
                 $workflow->migration_agent_id = $defaults['migration_agent_id'] ?? null;
                 unset($defaults['migration_agent_id']);
+                $defaults['tabs'] = $setting->tabs ?? ApplicationTypeSetting::defaultTabs($category);
                 $workflow->defaults = $defaults;
                 $workflow->checkpoint_ids = $setting?->checkpoint_ids ?? [];
                 $workflow->save();
@@ -90,16 +92,15 @@ class ApplicationTypeConfigurationController extends Controller
             $rules[$key] = ['nullable', 'string', 'max:10000'];
         }
 
-        if ($mode === 'type') {
-            $tabs = array_keys(ApplicationTypeSetting::TABS);
-            $rules['tabs'] = ['sometimes', 'array', 'max:'.count($tabs)];
-            $rules['tabs.*'] = ['required', 'string', 'distinct', Rule::in(
-                $category === 'SBS' ? $tabs : array_diff($tabs, ['nominations'])
-            )];
-        } else {
+        $tabs = array_keys(ApplicationTypeSetting::TABS);
+        $rules['tabs'] = ['sometimes', 'array', 'max:'.count($tabs)];
+        $rules['tabs.*'] = ['required', 'string', 'distinct', Rule::in(
+            $category === 'SBS' ? $tabs : array_diff($tabs, ['nominations'])
+        )];
+        if ($mode === 'subtype') {
             $rules['workflow_id'] = ['required', 'integer', Rule::exists('application_workflows', 'id')->where('category', $category)];
             $rules['name'] = ['sometimes', 'required', 'string', 'max:255'];
-            $rules['tabs'] = ['missing'];
+            $rules['tabs_present'] = ['sometimes', Rule::in(['1'])];
         }
 
         $data = $request->validate($rules);
@@ -127,7 +128,12 @@ class ApplicationTypeConfigurationController extends Controller
                 }
 
                 $workflow->migration_agent_id = $data['migration_agent_id'] ?? null;
-                $workflow->defaults = $defaults;
+                $workflow->defaults = $defaults + array_intersect_key($workflow->defaults ?? [], ['tabs' => true]);
+                if (isset($data['tabs_present']) || isset($data['tabs'])) {
+                    $workflow->defaults = array_replace($workflow->defaults, [
+                        'tabs' => array_keys(ApplicationTypeSetting::availableTabs($data['tabs'] ?? [])),
+                    ]);
+                }
                 $workflow->checkpoint_ids = array_map('intval', $data['checkpoint_ids'] ?? []);
                 $workflow->save();
             });

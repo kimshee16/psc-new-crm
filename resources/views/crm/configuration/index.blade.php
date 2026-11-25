@@ -23,6 +23,12 @@
                 'count' => count($applicationTypes),
             ],
             [
+                'id' => 'visa-charges',
+                'label' => 'Visa Application Charges',
+                'description' => 'Manage visa fees, variations and effective dates.',
+                'count' => count($visaChargeGroups),
+            ],
+            [
                 'id' => 'checkpoints',
                 'label' => 'Checkpoints',
                 'description' => 'Reusable checkpoints and their status options.',
@@ -239,6 +245,8 @@
         <div class="configuration-content min-w-0">
             @if ($activeConfigurationTab === 'application-types')
                 @include('crm.configuration.application-types')
+            @elseif ($activeConfigurationTab === 'visa-charges')
+                @include('crm.configuration.visa-charges')
             @elseif ($activeConfigurationTab === 'checkpoints')
                 @include('crm.configuration.checkpoints')
             @elseif ($activeConfigurationTab === 'workflow-checkpoints')

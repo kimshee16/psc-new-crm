@@ -68,7 +68,7 @@ class ApplicationsController extends Controller
             ->withCount(['rfis as active_rfi_count' => fn ($query) => $query->outstanding()])
             ->findOrFail($application);
 
-        $tabs = ApplicationTypeSetting::tabsFor($record->category, $record->sponsor_type);
+        $tabs = ApplicationTypeSetting::tabsFor($record->category, $record->sponsor_type, $record->workflow);
         $access = app(CrmAccess::class);
         foreach (['tasks' => 'tasks', 'rfi' => 'rfis'] as $key => $module) {
             if (! $access->allows($request->user(), $module)) {
