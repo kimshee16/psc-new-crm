@@ -89,6 +89,9 @@ class ApplicationsController extends Controller
         return view($nomination ? 'crm.applications.nomination' : ($sbs ? 'crm.applications.sbs' : 'crm.applications.show'), [
             'title' => 'PSC CRM - Application '.$application,
             'application' => $record,
+            'showProgramOptions' => in_array('Program Options', ($record->workflow?->defaults
+                ?? ApplicationTypeSetting::query()->where('category', $record->category)->first()?->defaults
+                ?? [])['modules'] ?? [], true),
             'checkpoints' => app(ApplicationCheckpoints::class)->forApplication($record),
             'applicationTabs' => $tabs,
             'activeApplicationTab' => $activeTab,

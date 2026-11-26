@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Application;
 use App\Models\ApplicationActivity;
+use App\Models\ApplicationCatalogEntry;
 use App\Models\ApplicationTypeSetting;
 use App\Models\ApplicationWorkflow;
 use App\Models\Checkpoint;
@@ -23,6 +24,45 @@ class ApplicationTabsTest extends TestCase
             'category' => $category,
             'primary_counsellor_id' => $user->id,
         ]);
+    }
+
+    public function test_catalogs_limit_assignments_and_only_show_program_options_when_assigned(): void
+    {
+        $admin = User::factory()->create(['account_type' => 'Admin']);
+        $study = $this->application($admin);
+        $visa = $this->application($admin, 'Visa');
+        $route = route('configuration.application-types.update');
+
+        $this->actingAs($admin)->get(route('configuration', ['tab' => 'actions']))
+            ->assertOk()->assertSee('Action name')->assertSee('Send Service Agreement');
+        $this->get(route('configuration', ['tab' => 'modules']))
+            ->assertOk()->assertSee('Module name')->assertSee('Program Options');
+        $this->get(route('applications.show', $study))->assertDontSee('program-options-heading');
+        $this->patchJson($route, ['category' => 'Study', 'mode' => 'type', 'modules' => ['Unknown']])
+            ->assertUnprocessable()->assertJsonValidationErrors('modules.0');
+        $this->patch($route, ['category' => 'Study', 'mode' => 'type', 'modules' => ['Program Options']])
+            ->assertSessionHasNoErrors();
+        $this->get(route('applications.show', $study))->assertOk()->assertSee('program-options-heading');
+        $this->get(route('applications.show', $visa))->assertOk()->assertDontSee('program-options-heading');
+    }
+
+    public function test_documents_require_configuration_access_and_a_valid_type(): void
+    {
+        $admin = User::factory()->create(['account_type' => 'Admin']);
+        $staff = User::factory()->create(['account_type' => 'Staff']);
+        $route = route('configuration.documents.store');
+
+        $this->actingAs($staff)->post($route, ['type' => 'Identity', 'name' => 'Birth certificate'])->assertForbidden();
+        $this->actingAs($admin)->postJson($route, ['type' => 'Unknown', 'name' => 'Birth certificate'])
+            ->assertUnprocessable()->assertJsonValidationErrors('type');
+        $this->postJson($route, ['type' => 'Identity'])->assertUnprocessable()->assertJsonValidationErrors('name');
+        $documents = route('configuration', ['tab' => 'documents']);
+        $this->post($route, ['type' => 'Identity', 'name' => 'Birth certificate'])->assertRedirect($documents);
+        $this->post($route, ['type' => 'Identity', 'name' => 'Birth certificate'])->assertRedirect($documents);
+        $this->assertDatabaseCount('application_catalog_entries', 6);
+        $this->get($documents)->assertOk()->assertSee('Birth certificate')->assertSee('Add new');
+        $this->get(route('configuration', ['tab' => 'application-types']))
+            ->assertOk()->assertSee('Identity — Birth certificate');
     }
 
     public function test_all_types_default_to_the_configurable_tabs_and_each_tab_can_be_opened(): void
@@ -100,12 +140,15 @@ class ApplicationTabsTest extends TestCase
     {
         $admin = User::factory()->create(['account_type' => 'Admin']);
         $checkpoint = Checkpoint::create(['name' => 'Review', 'statuses' => ['Pending', 'Done']]);
+        $passport = ApplicationCatalogEntry::create(['catalog' => 'required_documents', 'type' => 'Identity', 'name' => 'Passport']);
+        $transcript = ApplicationCatalogEntry::create(['catalog' => 'required_documents', 'type' => 'Education', 'name' => 'Transcript']);
         $route = route('configuration.application-types.update');
 
         $this->actingAs($admin)->patch($route, [
             'category' => 'Study', 'mode' => 'type', 'service_agreement_id' => 7,
-            'email_templates' => "Welcome\nFollow-up", 'required_documents' => 'Passport',
-            'forms' => 'Intake', 'actions' => 'Review case', 'checkpoint_ids' => [$checkpoint->id],
+            'email_templates' => "Welcome\nFollow-up", 'required_documents' => [$passport->selectionValue()],
+            'forms' => 'Intake', 'actions' => ['Request OSHC'], 'modules' => ['Program Options'],
+            'checkpoint_ids' => [$checkpoint->id],
             'tabs' => ['forms'],
         ])->assertSessionHasNoErrors();
 
@@ -125,12 +168,12 @@ class ApplicationTabsTest extends TestCase
 
         $this->patch($route, [
             'category' => 'Study', 'mode' => 'subtype', 'workflow_id' => $workflow->id,
-            'name' => 'University Study', 'service_agreement_id' => 6, 'required_documents' => 'Transcript',
+            'name' => 'University Study', 'service_agreement_id' => 6, 'required_documents' => [$transcript->selectionValue()],
         ])->assertSessionHasNoErrors();
 
         $workflow->refresh();
         $this->assertSame(6, $workflow->defaults['service_agreement_id']);
-        $this->assertSame(['Transcript'], $workflow->defaults['required_documents']);
+        $this->assertSame([$transcript->selectionValue()], $workflow->defaults['required_documents']);
         $this->assertSame([], $workflow->checkpoint_ids);
         $this->assertSame('University Study', $workflow->name);
         $this->get(route('configuration', ['tab' => 'application-types']))
@@ -140,7 +183,7 @@ class ApplicationTabsTest extends TestCase
             'section' => 'required_documents',
         ])->assertSessionHasNoErrors();
         $workflow->refresh();
-        $this->assertSame(['Passport'], $workflow->defaults['required_documents']);
+        $this->assertSame([$passport->selectionValue()], $workflow->defaults['required_documents']);
         $this->assertSame(6, $workflow->defaults['service_agreement_id']);
         $this->assertSame([], $workflow->checkpoint_ids);
         $this->assertSame(7, $type->fresh()->defaults['service_agreement_id']);

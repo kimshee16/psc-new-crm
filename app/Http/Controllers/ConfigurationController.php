@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ApplicationCatalogEntry;
 use App\Models\ApplicationTypeSetting;
 use App\Models\ApplicationWorkflow;
 use App\Models\Checkpoint;
@@ -63,6 +64,7 @@ class ConfigurationController extends Controller
         );
 
         return view('crm.configuration.index', [
+            'applicationCatalogs' => ApplicationCatalogEntry::catalogs(),
             'title' => 'PSC CRM - Configuration',
             'migrationAgents' => MigrationAgent::with('user')->orderBy('first_name')->orderBy('last_name')->orderBy('id')->get(),
             'editingMigrationAgent' => $request->query('tab') === 'migration-agents' && $request->query('edit')
@@ -452,6 +454,6 @@ class ConfigurationController extends Controller
     {
         $tab = (string) $request->query('tab', 'locations');
 
-        return in_array($tab, ['locations', 'education-levels', 'offices', 'regions', 'users', 'redirections', 'countries', 'events', 'event-marketing', 'application-types', 'nomination-subclasses', 'migration-agents', 'checkpoints', 'workflow-checkpoints', 'visa-charges'], true) ? $tab : 'locations';
+        return in_array($tab, ['locations', 'education-levels', 'offices', 'regions', 'users', 'redirections', 'countries', 'events', 'event-marketing', 'application-types', 'nomination-subclasses', 'migration-agents', 'checkpoints', 'workflow-checkpoints', 'visa-charges', 'actions', 'modules', 'documents'], true) ? $tab : 'locations';
     }
 }

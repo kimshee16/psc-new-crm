@@ -23,13 +23,37 @@
         <button type="submit" form="{{ $resetFormId }}" name="section" value="migration_agent_id" class="mt-1 text-sm underline">Reset migration agent to type default</button>
     @endif
     </div>
+    <input type="hidden" name="catalogs_present" value="1">
     @foreach (\App\Models\ApplicationTypeSetting::LIST_FIELDS as $key => $fieldLabel)
         <div @class(['rounded-md border border-yellow-500 p-2' => $overrides[$key] ?? false])>
+        @if (isset(\App\Models\ApplicationCatalogEntry::LABELS[$key]))
+            <fieldset>
+                <legend class="text-sm font-semibold">{{ $fieldLabel }}</legend>
+                @php
+                    $savedSelections = $defaults[$key] ?? [];
+                    $selections = $useOld ? (array) old($key, []) : $savedSelections;
+                    $choices = $applicationCatalogs->get($key, collect())->mapWithKeys(fn ($entry) => [
+                        $entry->selectionValue() => $entry->type ? $entry->type.' — '.$entry->name : $entry->name,
+                    ]);
+                @endphp
+                <div class="mt-2 grid gap-2">
+                    @forelse ($choices->union(array_combine($savedSelections, $savedSelections)) as $value => $label)
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="checkbox" name="{{ $key }}[]" value="{{ $value }}" @checked(in_array((string) $value, $selections, true))>
+                            {{ $label }}
+                        </label>
+                    @empty
+                        <p class="text-sm text-slate-600">No {{ str($fieldLabel)->lower() }} configured.</p>
+                    @endforelse
+                </div>
+            </fieldset>
+        @else
         <label class="grid gap-1 text-sm font-semibold">
             {{ $fieldLabel }}
             <textarea name="{{ $key }}" rows="3" maxlength="10000" placeholder="One entry per line"
                 class="rounded-md border border-slate-300 px-3 py-2">{{ $useOld ? old($key) : implode("\n", $defaults[$key] ?? []) }}</textarea>
         </label>
+        @endif
         @if ($overrides[$key] ?? false)
             <button type="submit" form="{{ $resetFormId }}" name="section" value="{{ $key }}" class="mt-1 text-sm underline">Reset {{ str($fieldLabel)->lower() }} to type default</button>
         @endif

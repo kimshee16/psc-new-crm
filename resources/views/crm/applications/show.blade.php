@@ -33,6 +33,9 @@
     @if ($application->organisation_id && in_array($application->category, ['SBS', 'Nomination']))
         @include('crm.organisations.application-details')
     @endif
+    @if ($showProgramOptions)
+        <x-applications.program-options />
+    @endif
     <x-applications.linked-items :application="$application" :items="$linkedItems" />
     <x-applications.tabs :application="$application" :tabs="$applicationTabs" :active-tab="$activeApplicationTab" :activities="$activities" :rfis="$rfis" />
     @if ($activeApplicationTab !== 'notes')

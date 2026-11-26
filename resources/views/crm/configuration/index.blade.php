@@ -29,6 +29,24 @@
                 'count' => count($visaChargeGroups),
             ],
             [
+                'id' => 'actions',
+                'label' => 'Actions',
+                'description' => 'Actions available to application types and subtypes.',
+                'count' => $applicationCatalogs->get('actions', collect())->count(),
+            ],
+            [
+                'id' => 'modules',
+                'label' => 'Modules',
+                'description' => 'Modules available to application types and subtypes.',
+                'count' => $applicationCatalogs->get('modules', collect())->count(),
+            ],
+            [
+                'id' => 'documents',
+                'label' => 'Documents',
+                'description' => 'Documents available for application checklists.',
+                'count' => $applicationCatalogs->get('required_documents', collect())->count(),
+            ],
+            [
                 'id' => 'checkpoints',
                 'label' => 'Checkpoints',
                 'description' => 'Reusable checkpoints and their status options.',
@@ -247,6 +265,8 @@
                 @include('crm.configuration.application-types')
             @elseif ($activeConfigurationTab === 'visa-charges')
                 @include('crm.configuration.visa-charges')
+            @elseif (in_array($activeConfigurationTab, ['actions', 'modules', 'documents'], true))
+                @include('crm.configuration.application-catalog')
             @elseif ($activeConfigurationTab === 'checkpoints')
                 @include('crm.configuration.checkpoints')
             @elseif ($activeConfigurationTab === 'workflow-checkpoints')

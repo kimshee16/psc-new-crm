@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ApplicationCatalogEntry;
 use App\Models\ApplicationTypeSetting;
 use App\Models\ApplicationWorkflow;
 use App\Models\User;
@@ -89,8 +90,14 @@ class ApplicationTypeConfigurationController extends Controller
         ];
 
         foreach (ApplicationTypeSetting::LIST_FIELDS as $key => $label) {
-            $rules[$key] = ['nullable', 'string', 'max:10000'];
+            if (isset(ApplicationCatalogEntry::LABELS[$key])) {
+                $rules[$key] = ['sometimes', 'array'];
+                $rules["$key.*"] = ['required', 'string', 'distinct'];
+            } else {
+                $rules[$key] = ['nullable', 'string', 'max:10000'];
+            }
         }
+        $rules['catalogs_present'] = ['sometimes', Rule::in(['1'])];
 
         $tabs = array_keys(ApplicationTypeSetting::TABS);
         $rules['tabs'] = ['sometimes', 'array', 'max:'.count($tabs)];
@@ -104,11 +111,23 @@ class ApplicationTypeConfigurationController extends Controller
         }
 
         $data = $request->validate($rules);
+        $typeDefaults = ApplicationTypeSetting::query()->where('category', $category)->first()?->defaults ?? [];
+        $existingDefaults = $mode === 'subtype'
+            ? (ApplicationWorkflow::findOrFail($data['workflow_id'])->defaults ?? $typeDefaults)
+            : $typeDefaults;
+        $catalogs = ApplicationCatalogEntry::catalogs();
         $defaults = [
             'service_agreement_id' => isset($data['service_agreement_id']) ? (int) $data['service_agreement_id'] : null,
         ];
 
         foreach (ApplicationTypeSetting::LIST_FIELDS as $key => $label) {
+            if (isset(ApplicationCatalogEntry::LABELS[$key])) {
+                $existing = $existingDefaults[$key] ?? [];
+                $available = $catalogs->get($key, collect())->map->selectionValue()->all();
+                $request->validate(["$key.*" => [Rule::in([...$available, ...$existing])]]);
+                $defaults[$key] = $data[$key] ?? (isset($data['catalogs_present']) ? [] : $existing);
+                continue;
+            }
             $lines = preg_split('/\R/u', $data[$key] ?? '');
             $defaults[$key] = array_values(array_unique(array_filter(array_map('trim', $lines), 'strlen')));
         }

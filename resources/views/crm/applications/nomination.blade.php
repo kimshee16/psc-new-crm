@@ -141,6 +141,9 @@
     @if($checkpoints->isNotEmpty())
         <x-applications.checkpoints-form :application="$application" :checkpoints="$checkpoints" embedded />
     @endif
+    @if ($showProgramOptions)
+        <x-applications.program-options />
+    @endif
     <x-applications.linked-items :application="$application" :items="$linkedItems" />
     <x-applications.tabs :application="$application" :tabs="$applicationTabs" :active-tab="$activeApplicationTab" :activities="$activities" :rfis="$rfis" />
     @if ($activeApplicationTab !== 'notes')
