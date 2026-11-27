@@ -33,7 +33,7 @@ class CheckpointConfigurationTest extends TestCase
             'category' => 'Study', 'checkpoint_ids' => [$letter->id, $documents->id],
         ])->assertSessionHasNoErrors();
         $this->get(route('configuration', ['tab' => 'workflow-checkpoints']))->assertOk()->assertSee('Move up');
-        $this->assertSame(ApplicationTypeSetting::DEFAULT_TABS, ApplicationTypeSetting::firstOrFail()->tabs);
+        $this->assertSame(ApplicationTypeSetting::defaultTabs('Study'), ApplicationTypeSetting::firstOrFail()->tabs);
         $this->get(route('applications.show', $record))->assertOk()->assertSeeInOrder([
             'Initial consultation', 'Offer letter', 'Supporting documents', 'Lodgement date', 'Outcome date',
         ]);

@@ -26,7 +26,7 @@ class EnsureCrmPrivilege
         } elseif (isset(CrmAccess::MODULES[$module])) {
             $action = match (true) {
                 str_ends_with($name, '.export') => 'export',
-                $request->isMethod('DELETE') => $module === 'configuration' ? 'edit' : 'delete',
+                $request->isMethod('DELETE') => $module === 'configuration' || $name === 'applications.services.destroy' ? 'edit' : 'delete',
                 str_ends_with($name, '.edit'), ! $request->isMethodSafe() => 'edit',
                 default => 'view',
             };

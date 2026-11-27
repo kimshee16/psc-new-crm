@@ -26,6 +26,7 @@ class ApplicationTypeSetting extends Model
         'sent-emails' => 'Sent Emails',
         'primary-files' => 'Primary Files',
         'forms' => 'Forms',
+        'services' => 'Services',
     ];
 
     public const DEFAULT_TABS = ['tasks', 'rfi', 'payments', 'quotes', 'agreements', 'sent-emails', 'primary-files', 'forms'];
@@ -66,7 +67,11 @@ class ApplicationTypeSetting extends Model
         // An absent setting inherits the defaults; an empty list disables all tabs.
         $tabs = self::availableTabs($workflow?->defaults['tabs'] ?? $setting?->tabs ?? self::defaultTabs($category));
 
-        return $category === 'SBS' ? $tabs : array_diff_key($tabs, ['nominations' => true]);
+        return array_filter($tabs, fn ($key) => match ($key) {
+            'nominations' => $category === 'SBS',
+            'services' => $category === 'Study',
+            default => true,
+        }, ARRAY_FILTER_USE_KEY);
     }
 
     public static function defaultTabs(string $category): array
@@ -74,6 +79,7 @@ class ApplicationTypeSetting extends Model
         return match ($category) {
             'Nomination' => self::NOMINATION_TABS,
             'SBS' => self::SBS_TABS,
+            'Study' => [...self::DEFAULT_TABS, 'services'],
             default => self::DEFAULT_TABS,
         };
     }

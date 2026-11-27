@@ -75,6 +75,11 @@ class Application extends Model
         return $this->belongsTo(Client::class, 'nominee_client_id');
     }
 
+    public function services(): HasMany
+    {
+        return $this->hasMany(ApplicationService::class);
+    }
+
     public function activities(): HasMany
     {
         return $this->hasMany(ApplicationActivity::class);

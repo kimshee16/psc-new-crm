@@ -97,6 +97,10 @@ $registerRoutes = function () {
         Route::post('/applications/{application}/linked-items', [ApplicationLinksController::class, 'update'])->whereNumber('application')->name('applications.links.update');
         Route::get('/applications/{application}', [ApplicationsController::class, 'show'])->whereNumber('application')->name('applications.show');
         Route::patch('/applications/{application}', [ApplicationsController::class, 'update'])->whereNumber('application')->name('applications.update');
+        Route::post('/applications/{application}/services', [\App\Http\Controllers\ApplicationServicesController::class, 'save'])->whereNumber('application')->name('applications.services.store');
+        Route::patch('/applications/{application}/services/{service}', [\App\Http\Controllers\ApplicationServicesController::class, 'save'])->whereNumber(['application', 'service'])->name('applications.services.update');
+        Route::delete('/applications/{application}/services/{service}', [\App\Http\Controllers\ApplicationServicesController::class, 'destroy'])->whereNumber(['application', 'service'])->name('applications.services.destroy');
+        Route::get('/applications/{application}/services/{service}/screenshot', [\App\Http\Controllers\ApplicationServicesController::class, 'screenshot'])->whereNumber(['application', 'service'])->name('applications.services.screenshot');
         Route::patch('/applications/{application}/checkpoints', [ApplicationsController::class, 'updateCheckpoints'])->whereNumber('application')->name('applications.checkpoints.update');
         Route::get('/applications/{application}/organisation-details/edit', [OrganisationApplicationsController::class, 'edit'])->whereNumber('application')->name('applications.organisation-details.edit');
         Route::patch('/applications/{application}/organisation-details', [OrganisationApplicationsController::class, 'update'])->whereNumber('application')->name('applications.organisation-details.update');

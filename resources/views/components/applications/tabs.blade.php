@@ -16,10 +16,14 @@
                 <h2 class="text-lg font-bold">{{ $tabs[$activeTab] }}</h2>
                 @if ($activeTab === 'rfi' && $rfis !== null && $access->allows(auth()->user(), 'rfis', 'create'))
                     <a href="{{ route('applications.rfis.create', $application) }}" class="rounded-md bg-[#1f7890] px-4 py-2 text-sm font-semibold text-white">+ Add RFI</a>
+                @elseif ($activeTab === 'services' && $access->allows(auth()->user(), 'applications', 'edit'))
+                    <button type="button" id="add-application-service" class="rounded-md bg-[#1f7890] px-4 py-2 text-sm font-semibold text-white">+ Add service</button>
                 @endif
             </div>
             @if ($activeTab === 'notes')
                 <x-related-record-notes :record="$application" module="applications" :record-id="$application->id" />
+            @elseif ($activeTab === 'services')
+                @include('crm.applications.services', ['canEditServices' => $access->allows(auth()->user(), 'applications', 'edit')])
             @elseif ($activeTab === 'nominations' && $nominations !== null)
                 @include('crm.applications.sbs-nominations')
             @elseif ($activeTab === 'rfi' && $rfis !== null)

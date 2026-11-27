@@ -22,6 +22,7 @@
                         <div class="mt-2 flex flex-wrap gap-x-6 gap-y-3">
                             @foreach ($applicationTabOptions as $key => $tabLabel)
                                 @continue($key === 'nominations' && $category !== 'SBS')
+                                @continue($key === 'services' && $category !== 'Study')
                                 <label class="flex items-center gap-2 text-sm">
                                     <input type="checkbox" name="tabs[]" value="{{ $key }}"
                                         @checked(in_array($key, (array) (old('mode') === 'type' && old('category') === $category ? old('tabs', []) : $selectedTabs), true))>
@@ -74,6 +75,7 @@
                                 <div class="mt-2 flex flex-wrap gap-x-6 gap-y-3">
                                     @foreach ($applicationTabOptions as $key => $tabLabel)
                                         @continue($key === 'nominations' && $category !== 'SBS')
+                                        @continue($key === 'services' && $category !== 'Study')
                                         <label class="flex items-center gap-2 text-sm">
                                             <input type="checkbox" name="tabs[]" value="{{ $key }}"
                                                 @checked(in_array($key, (array) ($useOld ? old('tabs', []) : $subtypeTabs), true))>
